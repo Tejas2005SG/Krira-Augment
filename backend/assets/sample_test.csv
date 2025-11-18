@@ -1,0 +1,4 @@
+sr.no,input,output
+1,What is included in the Krira AI Starter plan?,The Starter plan provides 1 chatbot, 2 data sources, and up to 2,000 monthly conversations.
+2,How do I reset my workspace API key?,Open the Security tab under Settings and click "Regenerate API Key", then confirm in the dialog.
+3,Can I export my evaluation results?,Yes, go to Test & Evaluate and use the Export button to download the latest CSV summary.
