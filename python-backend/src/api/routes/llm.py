@@ -46,7 +46,7 @@ async def test_llm_configuration(
         vector_store = request.get("vectorStore")
         dataset_ids = request.get("datasetIds", [])
         top_k = request.get("topK", 30)
-        pinecone = request.get("pinecone")
+        pinecone_payload = request.get("pinecone")
         test_question = request.get("question")  # Get the actual question from frontend
         
         # Validate required parameters
@@ -55,6 +55,9 @@ async def test_llm_configuration(
                 status_code=400, 
                 detail="Missing required parameters: provider, modelId, embeddingModel, vectorStore, question"
             )
+        
+        # Parse Pinecone configuration if provided
+        pinecone_config = PineconeConfig.model_validate(pinecone_payload) if pinecone_payload else None
         
         # Call the LLM service test method
         result = await llm_service.test_configuration(
@@ -66,12 +69,15 @@ async def test_llm_configuration(
             dataset_ids=dataset_ids,
             top_k=top_k,
             test_question=test_question,
-            pinecone=pinecone
+            pinecone=pinecone_config
         )
         
         # Return the result directly in the format the frontend expects
         return result
         
+    except ValidationError as exc:
+        logger.error("Invalid Pinecone configuration: %s", exc)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.errors()) from exc
     except HTTPException:
         raise
     except LLMServiceError as exc:
