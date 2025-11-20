@@ -1,7 +1,29 @@
 acli.exe
+acli.exe
 notes.yaml
 test
 uploads
 .factory
 .benchmarks
 .agent
+
+# Vector store databases
+python-backend/vector_store/
+*.sqlite3
+*.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Node
+node_modules/
+.next/
+.cache/
+
+# Environment
+.env.local
+.env.production
