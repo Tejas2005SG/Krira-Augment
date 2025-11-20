@@ -1,13 +1,17 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import Image from "next/image"
+import jsPDF from "jspdf"
 import {
-  ArrowUpDown,
   Edit2,
   FileText,
+  Loader2,
   MoreHorizontal,
   Search,
+  Trash2,
+  Download,
 } from "lucide-react"
 
 import {
@@ -31,14 +35,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -48,97 +44,322 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Switch } from "@/components/ui/switch"
-import { Textarea } from "@/components/ui/textarea"
+import { useToast } from "@/components/ui/use-toast"
+import { chatbotService, type Chatbot } from "@/lib/api/chatbot.service"
 
 type ChatbotStatus = "active" | "inactive" | "draft"
 
-type Chatbot = {
-  id: string
-  name: string
-  status: ChatbotStatus
-  created: string
-  updated: string
-  queries: number
-  successRate: number
-  responseTime: string
-  thumbnail: string
-  systemPrompt: string
-}
-
-const CHATBOTS: Chatbot[] = [
-  {
-    id: "support-pro",
-    name: "Support Pro",
-    status: "active",
-    created: "Feb 12, 2025",
-    updated: "Nov 10, 2025",
-    queries: 8240,
-    successRate: 94,
-    responseTime: "842ms",
-    thumbnail: "/hero-light.webp",
-    systemPrompt: "You are Support Pro, an empathetic assistant helping users troubleshoot quickly.",
-  },
-  {
-    id: "sales-advisor",
-    name: "Sales Advisor",
-    status: "active",
-    created: "Apr 4, 2025",
-    updated: "Nov 9, 2025",
-    queries: 5421,
-    successRate: 88,
-    responseTime: "910ms",
-    thumbnail: "/hero-dark.webp",
-    systemPrompt: "You are a sales enablement expert guiding prospects through product features.",
-  },
-  {
-    id: "onboarding-coach",
-    name: "Onboarding Coach",
-    status: "inactive",
-    created: "Jan 8, 2025",
-    updated: "Oct 25, 2025",
-    queries: 3398,
-    successRate: 91,
-    responseTime: "1.2s",
-    thumbnail: "/hero-light.webp",
-    systemPrompt: "Coach new teammates on how to use Krira AI effectively.",
-  },
-  {
-    id: "pricing-demo",
-    name: "Pricing Demo",
-    status: "draft",
-    created: "Nov 2, 2025",
-    updated: "Nov 2, 2025",
-    queries: 0,
-    successRate: 0,
-    responseTime: "-",
-    thumbnail: "/hero-dark.webp",
-    systemPrompt: "Explain Krira pricing tiers with clarity.",
-  },
-]
-
 export function PreviousChatbotsTab() {
+  const router = useRouter()
+  const { toast } = useToast()
+  
+  const [chatbots, setChatbots] = React.useState<Chatbot[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
   const [searchTerm, setSearchTerm] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState<"all" | ChatbotStatus>("all")
   const [sort, setSort] = React.useState("newest")
-  const [selectedChatbot, setSelectedChatbot] = React.useState<Chatbot | null>(null)
-  const [promptDraft, setPromptDraft] = React.useState("")
   const [deleteChatbot, setDeleteChatbot] = React.useState<Chatbot | null>(null)
+  const [isDeleting, setIsDeleting] = React.useState(false)
+  const [deleteConfirmName, setDeleteConfirmName] = React.useState("")
+
+  // Fetch chatbots on mount
+  React.useEffect(() => {
+    loadChatbots()
+  }, [])
+
+  const loadChatbots = async () => {
+    try {
+      setIsLoading(true)
+      const response = await chatbotService.getAllChatbots()
+      setChatbots(response.chatbots)
+    } catch (error: any) {
+      console.error("Failed to load chatbots:", error)
+      toast({
+        title: "Error loading chatbots",
+        description: error.message || "Failed to fetch your chatbots"
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleDeleteChatbot = async () => {
+    if (!deleteChatbot) return
+
+    try {
+      setIsDeleting(true)
+      await chatbotService.deleteChatbot(deleteChatbot._id)
+      
+      toast({
+        title: "Chatbot deleted",
+        description: `${deleteChatbot.name} has been deleted successfully`,
+      })
+
+      // Remove from list
+      setChatbots(prev => prev.filter(bot => bot._id !== deleteChatbot._id))
+      setDeleteChatbot(null)
+    } catch (error: any) {
+      console.error("Failed to delete chatbot:", error)
+      toast({
+        title: "Error deleting chatbot",
+        description: error.message || "Failed to delete the chatbot"
+      })
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const handleEditChatbot = (chatbot: Chatbot) => {
+    // Navigate to train-llm tab with chatbot ID as query parameter
+    router.push(`/dashboard?tab=train-llm&editId=${chatbot._id}`)
+  }
+
+  const handleExportDetails = (chatbot: Chatbot) => {
+    try {
+      const doc = new jsPDF()
+      
+      // Add title
+      doc.setFontSize(20)
+      doc.setTextColor(37, 99, 235) // Blue color
+      doc.text("Chatbot Configuration Details", 20, 20)
+      
+      // Reset for body text
+      doc.setFontSize(10)
+      doc.setTextColor(0, 0, 0)
+      
+      let yPosition = 35
+      
+      // Basic Information
+      doc.setFontSize(14)
+      doc.setFont("helvetica", "bold")
+      doc.text("Basic Information", 20, yPosition)
+      yPosition += 8
+      
+      doc.setFontSize(10)
+      doc.setFont("helvetica", "normal")
+      doc.text(`Name: ${chatbot.name}`, 25, yPosition)
+      yPosition += 6
+      doc.text(`ID: ${chatbot._id}`, 25, yPosition)
+      yPosition += 6
+      doc.text(`Created: ${new Date(chatbot.createdAt).toLocaleString()}`, 25, yPosition)
+      yPosition += 6
+      doc.text(`Last Updated: ${new Date(chatbot.updatedAt).toLocaleString()}`, 25, yPosition)
+      yPosition += 10
+      
+      // Dataset Information
+      if (chatbot.dataset) {
+        doc.setFontSize(14)
+        doc.setFont("helvetica", "bold")
+        doc.text("Dataset Information", 20, yPosition)
+        yPosition += 8
+        
+        doc.setFontSize(10)
+        doc.setFont("helvetica", "normal")
+        doc.text(`Type: ${chatbot.dataset.type || "N/A"}`, 25, yPosition)
+        yPosition += 6
+        
+        if (chatbot.dataset.files && chatbot.dataset.files.length > 0) {
+          doc.text(`Files (${chatbot.dataset.files.length}):`, 25, yPosition)
+          yPosition += 6
+          chatbot.dataset.files.forEach((file, idx) => {
+            const fileText = `  ${idx + 1}. ${file.name} - ${file.chunks || 0} chunks, ${(file.size / 1024).toFixed(2)} KB`
+            doc.text(fileText, 30, yPosition)
+            yPosition += 5
+          })
+        }
+        
+        if (chatbot.dataset.urls && chatbot.dataset.urls.length > 0) {
+          yPosition += 2
+          doc.text(`URLs (${chatbot.dataset.urls.length}):`, 25, yPosition)
+          yPosition += 6
+          chatbot.dataset.urls.forEach((url, idx) => {
+            doc.text(`  ${idx + 1}. ${url}`, 30, yPosition)
+            yPosition += 5
+          })
+        }
+        yPosition += 5
+      }
+      
+      // Embedding Configuration
+      if (chatbot.embedding) {
+        if (yPosition > 250) {
+          doc.addPage()
+          yPosition = 20
+        }
+        
+        doc.setFontSize(14)
+        doc.setFont("helvetica", "bold")
+        doc.text("Embedding Configuration", 20, yPosition)
+        yPosition += 8
+        
+        doc.setFontSize(10)
+        doc.setFont("helvetica", "normal")
+        doc.text(`Model: ${chatbot.embedding.model || "N/A"}`, 25, yPosition)
+        yPosition += 6
+        doc.text(`Vector Store: ${chatbot.embedding.vectorStore || "N/A"}`, 25, yPosition)
+        yPosition += 6
+        doc.text(`Status: ${chatbot.embedding.isEmbedded ? "✓ Embedded" : "✗ Not Embedded"}`, 25, yPosition)
+        yPosition += 6
+        
+        if (chatbot.embedding.pineconeConfig) {
+          doc.text(`Pinecone Index: ${chatbot.embedding.pineconeConfig.indexName || "N/A"}`, 25, yPosition)
+          yPosition += 6
+        }
+        
+        if (chatbot.embedding.stats) {
+          doc.text(`Chunks Processed: ${chatbot.embedding.stats.chunksProcessed || 0}`, 25, yPosition)
+          yPosition += 6
+          doc.text(`Chunks Embedded: ${chatbot.embedding.stats.chunksEmbedded || 0}`, 25, yPosition)
+          yPosition += 6
+        }
+        yPosition += 5
+      }
+      
+      // LLM Configuration
+      if (chatbot.llm) {
+        if (yPosition > 250) {
+          doc.addPage()
+          yPosition = 20
+        }
+        
+        doc.setFontSize(14)
+        doc.setFont("helvetica", "bold")
+        doc.text("LLM Configuration", 20, yPosition)
+        yPosition += 8
+        
+        doc.setFontSize(10)
+        doc.setFont("helvetica", "normal")
+        doc.text(`Provider: ${chatbot.llm.provider || "N/A"}`, 25, yPosition)
+        yPosition += 6
+        doc.text(`Model: ${chatbot.llm.model || "N/A"}`, 25, yPosition)
+        yPosition += 6
+        doc.text(`Top-K Chunks: ${chatbot.llm.topK || "N/A"}`, 25, yPosition)
+        yPosition += 6
+        
+        if (chatbot.llm.systemPrompt) {
+          doc.text("System Prompt:", 25, yPosition)
+          yPosition += 6
+          const splitPrompt = doc.splitTextToSize(chatbot.llm.systemPrompt, 160)
+          doc.text(splitPrompt, 30, yPosition)
+          yPosition += (splitPrompt.length * 5) + 5
+        }
+        yPosition += 5
+      }
+      
+      // Test Results
+      if (chatbot.tests && chatbot.tests.length > 0) {
+        if (yPosition > 220) {
+          doc.addPage()
+          yPosition = 20
+        }
+        
+        doc.setFontSize(14)
+        doc.setFont("helvetica", "bold")
+        doc.text(`Test Results (${chatbot.tests.length} tests)`, 20, yPosition)
+        yPosition += 8
+        
+        doc.setFontSize(10)
+        doc.setFont("helvetica", "normal")
+        chatbot.tests.slice(0, 5).forEach((test, idx) => {
+          if (yPosition > 270) {
+            doc.addPage()
+            yPosition = 20
+          }
+          doc.text(`Test ${idx + 1}:`, 25, yPosition)
+          yPosition += 5
+          doc.text(`Q: ${test.question}`, 30, yPosition)
+          yPosition += 5
+          const splitAnswer = doc.splitTextToSize(`A: ${test.answer}`, 150)
+          doc.text(splitAnswer, 30, yPosition)
+          yPosition += (splitAnswer.length * 5) + 5
+        })
+        
+        if (chatbot.tests.length > 5) {
+          doc.text(`... and ${chatbot.tests.length - 5} more tests`, 25, yPosition)
+          yPosition += 10
+        }
+      }
+      
+      // Evaluation Metrics
+      if (chatbot.evaluation && chatbot.evaluation.metrics) {
+        if (yPosition > 230) {
+          doc.addPage()
+          yPosition = 20
+        }
+        
+        doc.setFontSize(14)
+        doc.setFont("helvetica", "bold")
+        doc.text("Evaluation Metrics", 20, yPosition)
+        yPosition += 8
+        
+        doc.setFontSize(10)
+        doc.setFont("helvetica", "normal")
+        const metrics = chatbot.evaluation.metrics
+        doc.text(`Accuracy: ${metrics.accuracy?.toFixed(2)}%`, 25, yPosition)
+        yPosition += 6
+        doc.text(`Evaluation Score: ${metrics.evaluationScore?.toFixed(2)}%`, 25, yPosition)
+        yPosition += 6
+        doc.text(`Semantic Accuracy: ${metrics.semanticAccuracy?.toFixed(2)}%`, 25, yPosition)
+        yPosition += 6
+        doc.text(`Faithfulness: ${metrics.faithfulness?.toFixed(2)}%`, 25, yPosition)
+        yPosition += 6
+        doc.text(`Answer Relevancy: ${metrics.answerRelevancy?.toFixed(2)}%`, 25, yPosition)
+        yPosition += 6
+        doc.text(`Content Precision: ${metrics.contentPrecision?.toFixed(2)}%`, 25, yPosition)
+        yPosition += 6
+        doc.text(`Context Recall: ${metrics.contextRecall?.toFixed(2)}%`, 25, yPosition)
+      }
+      
+      // Footer
+      const pageCount = doc.getNumberOfPages()
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i)
+        doc.setFontSize(8)
+        doc.setTextColor(128, 128, 128)
+        doc.text(`Page ${i} of ${pageCount}`, 180, 285)
+        doc.text(`Generated on ${new Date().toLocaleString()}`, 20, 285)
+      }
+      
+      // Save the PDF
+      doc.save(`${chatbot.name.replace(/[^a-z0-9]/gi, '_')}_details.pdf`)
+      
+      toast({
+        title: "PDF exported successfully",
+        description: `Downloaded details for "${chatbot.name}"`
+      })
+    } catch (error: any) {
+      console.error("Failed to export PDF:", error)
+      toast({
+        title: "Export failed",
+        description: error.message || "Failed to export chatbot details"
+      })
+    }
+  }
+
+  const getChatbotStatus = (chatbot: Chatbot): ChatbotStatus => {
+    // Determine status based on chatbot completion
+    if (chatbot.embedding?.isEmbedded && chatbot.llm?.model) {
+      return "active"
+    }
+    if (chatbot.dataset) {
+      return "inactive"
+    }
+    return "draft"
+  }
 
   const filteredChatbots = React.useMemo(() => {
-    return CHATBOTS.filter((bot) => {
+    return chatbots.filter((bot) => {
       const matchesSearch = bot.name.toLowerCase().includes(searchTerm.toLowerCase())
-      const matchesStatus = statusFilter === "all" ? true : bot.status === statusFilter
+      const botStatus = getChatbotStatus(bot)
+      const matchesStatus = statusFilter === "all" ? true : botStatus === statusFilter
       return matchesSearch && matchesStatus
     })
-  }, [searchTerm, statusFilter])
+  }, [chatbots, searchTerm, statusFilter])
 
   const sortedChatbots = React.useMemo(() => {
     switch (sort) {
       case "oldest":
         return [...filteredChatbots].reverse()
-      case "most-used":
-        return [...filteredChatbots].sort((a, b) => b.queries - a.queries)
       case "name":
         return [...filteredChatbots].sort((a, b) => a.name.localeCompare(b.name))
       default:
@@ -146,14 +367,24 @@ export function PreviousChatbotsTab() {
     }
   }, [filteredChatbots, sort])
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="space-y-1">
           <h2 className="text-2xl font-semibold">Your Chatbots</h2>
-          <p className="text-sm text-muted-foreground">Manage active assistants, duplicate success, and iterate quickly.</p>
+          <p className="text-sm text-muted-foreground">
+            Manage active assistants, edit configurations, and iterate quickly.
+          </p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => router.push("/dashboard?tab=train-llm")}>
           <FileText className="h-4 w-4" /> Create new chatbot
         </Button>
       </header>
@@ -187,7 +418,6 @@ export function PreviousChatbotsTab() {
               <SelectContent>
                 <SelectItem value="newest">Newest first</SelectItem>
                 <SelectItem value="oldest">Oldest first</SelectItem>
-                <SelectItem value="most-used">Most used</SelectItem>
                 <SelectItem value="name">Name A-Z</SelectItem>
               </SelectContent>
             </Select>
@@ -198,57 +428,82 @@ export function PreviousChatbotsTab() {
       {sortedChatbots.length === 0 ? (
         <Card className="border-dashed py-12 text-center">
           <CardHeader>
-            <CardTitle>No chatbots yet</CardTitle>
-            <CardDescription>Create your first assistant to see analytics here.</CardDescription>
+            <CardTitle>No chatbots {searchTerm || statusFilter !== "all" ? "found" : "yet"}</CardTitle>
+            <CardDescription>
+              {searchTerm || statusFilter !== "all" 
+                ? "Try adjusting your filters" 
+                : "Create your first assistant to see it here"}
+            </CardDescription>
           </CardHeader>
           <CardFooter className="justify-center">
-            <Button>Create your first chatbot</Button>
+            <Button onClick={() => router.push("/dashboard?tab=train-llm")}>
+              Create your first chatbot
+            </Button>
           </CardFooter>
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {sortedChatbots.map((bot) => (
             <ChatbotCard
-              key={bot.id}
+              key={bot._id}
               chatbot={bot}
-              onEditPrompt={() => {
-                setSelectedChatbot(bot)
-                setPromptDraft(bot.systemPrompt)
-              }}
+              status={getChatbotStatus(bot)}
+              onEdit={() => handleEditChatbot(bot)}
               onDelete={() => setDeleteChatbot(bot)}
+              onExport={() => handleExportDetails(bot)}
             />
           ))}
         </div>
       )}
 
-      <Dialog open={!!selectedChatbot} onOpenChange={(open) => !open && setSelectedChatbot(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit system prompt - {selectedChatbot?.name}</DialogTitle>
-            <DialogDescription>Update instructions that guide this assistant.</DialogDescription>
-          </DialogHeader>
-          <Textarea rows={6} value={promptDraft} onChange={(event) => setPromptDraft(event.target.value)} />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedChatbot(null)}>
-              Cancel
-            </Button>
-            <Button onClick={() => setSelectedChatbot(null)}>Save changes</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={!!deleteChatbot} onOpenChange={(open) => !open && setDeleteChatbot(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete chatbot?</AlertDialogTitle>
+      <AlertDialog open={!!deleteChatbot} onOpenChange={(open) => {
+        if (!open) {
+          setDeleteChatbot(null)
+          setDeleteConfirmName("")
+        }
+      }}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader className="space-y-3">
+            <AlertDialogTitle className="text-xl">Delete chatbot?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete {deleteChatbot?.name} and its history.
+              This action cannot be undone. This will permanently delete <span className="font-semibold text-foreground">"{deleteChatbot?.name}"</span> and all its data.
             </AlertDialogDescription>
+            <div className="space-y-2">
+              <label htmlFor="confirm-name" className="text-sm font-medium text-foreground">
+                Type <span className="font-mono font-semibold">{deleteChatbot?.name}</span> to confirm:
+              </label>
+              <Input
+                id="confirm-name"
+                value={deleteConfirmName}
+                onChange={(e) => setDeleteConfirmName(e.target.value)}
+                placeholder="Enter chatbot name"
+                disabled={isDeleting}
+                className="font-mono"
+              />
+            </div>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+          <AlertDialogFooter className="gap-3 sm:gap-3 flex-col sm:flex-row">
+            <AlertDialogCancel disabled={isDeleting} className="mt-0 w-full sm:w-auto">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 mt-0 w-full sm:w-auto px-4 py-2"
+              onClick={handleDeleteChatbot}
+              disabled={isDeleting || deleteConfirmName !== deleteChatbot?.name}
+            >
+              <div className="flex items-center justify-center gap-2">
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    <span>Delete Chatbot</span>
+                  </>
+                )}
+              </div>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -259,18 +514,40 @@ export function PreviousChatbotsTab() {
 
 type ChatbotCardProps = {
   chatbot: Chatbot
-  onEditPrompt: () => void
+  status: ChatbotStatus
+  onEdit: () => void
   onDelete: () => void
+  onExport: () => void
 }
 
-function ChatbotCard({ chatbot, onEditPrompt, onDelete }: ChatbotCardProps) {
+function ChatbotCard({ chatbot, status, onEdit, onDelete, onExport }: ChatbotCardProps) {
+  const datasetInfo = chatbot.dataset
+  const embeddingInfo = chatbot.embedding
+  const llmInfo = chatbot.llm
+  
+  // Calculate metrics
+  const totalChunks = datasetInfo?.files?.reduce((acc, f) => acc + (f.chunks || 0), 0) || 0
+  const testCount = chatbot.testHistory?.length || 0
+  
+  const createdDate = new Date(chatbot.createdAt).toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric', 
+    year: 'numeric' 
+  })
+  
+  const updatedDate = new Date(chatbot.updatedAt).toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric', 
+    year: 'numeric' 
+  })
+
   return (
     <Card className="flex h-full flex-col border-border/60">
       <CardHeader className="flex flex-row items-start justify-between space-y-0">
         <div>
           <CardTitle className="text-lg font-semibold">{chatbot.name}</CardTitle>
           <CardDescription className="text-xs text-muted-foreground">
-            Created {chatbot.created} · Updated {chatbot.updated}
+            Created {createdDate} · Updated {updatedDate}
           </CardDescription>
         </div>
         <DropdownMenu>
@@ -282,50 +559,175 @@ function ChatbotCard({ chatbot, onEditPrompt, onDelete }: ChatbotCardProps) {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onEditPrompt}>Edit system prompt</DropdownMenuItem>
-            <DropdownMenuItem>Duplicate</DropdownMenuItem>
-            <DropdownMenuItem>View analytics</DropdownMenuItem>
+            <DropdownMenuItem onClick={onEdit}>
+              <Edit2 className="mr-2 h-4 w-4" />
+              Edit chatbot
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-destructive" onClick={onDelete}>
+              <Trash2 className="mr-2 h-4 w-4" />
               Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="relative overflow-hidden rounded-lg border">
-          <div className="absolute inset-0 bg-gradient-to-tr from-slate-900/40 via-transparent to-primary/20" />
-          <Image src={chatbot.thumbnail} alt={chatbot.name} width={640} height={240} className="h-40 w-full object-cover" />
-        </div>
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <StatusBadge status={chatbot.status} />
-          <Badge variant="secondary">{chatbot.queries.toLocaleString()} queries</Badge>
-          <Badge variant="outline">{chatbot.successRate}% success</Badge>
-          <Badge variant="outline">{chatbot.responseTime}</Badge>
+          <StatusBadge status={status} />
+          {totalChunks > 0 && (
+            <Badge variant="secondary">{totalChunks.toLocaleString()} chunks</Badge>
+          )}
         </div>
-        <div className="space-y-1 rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
-          <p className="font-medium text-foreground">System prompt</p>
-          <p>{chatbot.systemPrompt}</p>
+        
+        <div className="space-y-3">
+          {/* LLM Provider and Model */}
+          {llmInfo?.model && (
+            <div className="text-sm">
+              <span className="font-medium text-foreground">Model: </span>
+              <span className="text-muted-foreground">
+                {llmInfo.provider} · {llmInfo.model}
+              </span>
+            </div>
+          )}
+
+          {/* Dataset */}
+          {datasetInfo && (
+            <div className="space-y-1.5">
+              <div className="text-sm">
+                <span className="font-medium text-foreground">Dataset: </span>
+                {datasetInfo.files && datasetInfo.files.length > 0 ? (
+                  <span className="text-muted-foreground">
+                    {datasetInfo.files[0].name}
+                  </span>
+                ) : datasetInfo.urls && datasetInfo.urls.length > 0 ? (
+                  <span className="text-muted-foreground">
+                    {datasetInfo.urls[0]}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">No data</span>
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground pl-[68px]">
+                Type: {datasetInfo.type?.toUpperCase() || 'Unknown'}
+              </div>
+            </div>
+          )}
+
+          {/* Embedding Model with Logo */}
+          {embeddingInfo?.model && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="font-medium text-foreground">Embedding:</span>
+              <div className="flex items-center gap-1.5">
+                <Image
+                  src={getEmbeddingLogo(embeddingInfo.model)}
+                  alt={embeddingInfo.model}
+                  width={16}
+                  height={16}
+                  className="rounded"
+                />
+                <span className="text-muted-foreground">{embeddingInfo.model}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Vector Store with Logo */}
+          {embeddingInfo?.vectorStore && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="font-medium text-foreground">Vector Store:</span>
+              <div className="flex items-center gap-1.5">
+                <Image
+                  src={getVectorStoreLogo(embeddingInfo.vectorStore)}
+                  alt={embeddingInfo.vectorStore}
+                  width={16}
+                  height={16}
+                  className="rounded"
+                />
+                <span className="text-muted-foreground">{embeddingInfo.vectorStore}</span>
+              </div>
+            </div>
+          )}
+
+          {/* System Prompt */}
+          {llmInfo?.systemPrompt && (
+            <div className="rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
+              <p className="font-medium text-foreground mb-2">System prompt</p>
+              <div className="max-h-[100px] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/40">
+                <p className="whitespace-pre-wrap">{llmInfo.systemPrompt}</p>
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
       <CardFooter className="mt-auto flex items-center justify-between gap-3">
-        <Button variant="outline" size="sm" className="gap-2" onClick={onEditPrompt}>
+        <Button variant="outline" size="sm" className="gap-2" onClick={onEdit}>
           <Edit2 className="h-4 w-4" />
-          Edit prompt
+          Edit
         </Button>
-        <Button variant="ghost" size="sm" className="gap-2">
-          <ArrowUpDown className="h-4 w-4" /> View details
+        <Button variant="ghost" size="sm" className="gap-2" onClick={onExport}>
+          <Download className="h-4 w-4" /> Export Details
         </Button>
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Active</span>
-          <Switch checked={chatbot.status === "active"} onCheckedChange={() => {}} />
-        </div>
       </CardFooter>
     </Card>
   )
 }
 
 function StatusBadge({ status }: { status: ChatbotStatus }) {
-  const variant = status === "active" ? "default" : status === "inactive" ? "secondary" : "outline"
-  return <Badge variant={variant}>{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>
+  const label = status.charAt(0).toUpperCase() + status.slice(1)
+  
+  if (status === "active") {
+    return (
+      <Badge 
+        className="bg-green-50 text-green-700 border-green-600 hover:bg-green-100 dark:bg-green-950 dark:text-green-300 dark:border-green-800"
+      >
+        {label}
+      </Badge>
+    )
+  }
+  
+  if (status === "inactive") {
+    return (
+      <Badge 
+        className="bg-red-50 text-red-700 border-red-600 hover:bg-red-100 dark:bg-red-950 dark:text-red-300 dark:border-red-800"
+      >
+        {label}
+      </Badge>
+    )
+  }
+  
+  return <Badge variant="outline">{label}</Badge>
+}
+
+// Helper functions to get provider logos
+function getEmbeddingLogo(model: string): string {
+  const modelLower = model.toLowerCase()
+  
+  // Check for HuggingFace
+  if (modelLower.includes('hugging') || modelLower.includes('hf')) {
+    return '/huggingface.svg'
+  }
+  
+  // Check for OpenAI
+  if (modelLower.includes('openai') || modelLower.includes('text-embedding')) {
+    return '/openai.svg'
+  }
+  
+  // Default fallback
+  return '/openai.svg'
+}
+
+function getVectorStoreLogo(vectorStore: string): string {
+  const storeLower = vectorStore.toLowerCase()
+  
+  // Check for Pinecone
+  if (storeLower.includes('pinecone')) {
+    return '/pinecone.png'
+  }
+  
+  // Check for Chroma
+  if (storeLower.includes('chroma')) {
+    return '/chroma.png'
+  }
+  
+  // Default to chroma
+  return '/chroma.png'
 }

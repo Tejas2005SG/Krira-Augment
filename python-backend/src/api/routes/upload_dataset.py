@@ -22,6 +22,7 @@ async def upload_dataset(
     loader: DatasetLoader = Depends(get_dataset_loader),
 ) -> DatasetChunksResponse:
     """Process dataset according to user-selected options and return generated chunks."""
+    print(f"[Python] Received upload_dataset request: type={payload.dataset_type}, size={payload.chunk_size}")
 
     try:
         options = ChunkingOptions(

@@ -62,11 +62,22 @@ const callPython = async (payload) => {
     throw new Error("Python backend URL is not configured");
   }
 
-  const response = await axios.post(
-    `${ENV.PYTHON_BACKEND_URL.replace(/\/$/, "")}/uploaddataset`,
-    payload
-  );
-  return response.data;
+  console.log(`[Node] Calling Python backend at ${ENV.PYTHON_BACKEND_URL}/uploaddataset`);
+  try {
+    const response = await axios.post(
+      `${ENV.PYTHON_BACKEND_URL.replace(/\/$/, "")}/uploaddataset`,
+      payload,
+      { timeout: 300000 } // 5 minutes timeout
+    );
+    console.log("[Node] Python backend responded successfully");
+    return response.data;
+  } catch (error) {
+    console.error("[Node] Python backend call failed:", error.message);
+    if (error.code === 'ECONNABORTED') {
+      throw new Error("Python backend timed out");
+    }
+    throw error;
+  }
 };
 
 const buildRelativePath = (absolutePath) =>
@@ -87,6 +98,7 @@ const formatError = (label, type, error) => ({
  * Store dataset uploads and delegate chunking to the Python service.
  */
 export const uploadDataset = async (req, res) => {
+  console.log("[Node] Received uploadDataset request");
   try {
     const chunkSize = parseIntOrDefault(req.body?.chunkSize, 1000);
     const chunkOverlap = parseIntOrDefault(req.body?.chunkOverlap, 200);

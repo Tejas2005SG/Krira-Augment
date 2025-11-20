@@ -198,9 +198,13 @@ class AuthService {
   clearAuth(): void {
     if (typeof window === 'undefined') return;
     
+    // Determine if we're in production (check if using HTTPS)
+    const isProduction = window.location.protocol === 'https:';
+    const sameSite = isProduction ? 'None; Secure' : 'Lax';
+    
     // Clear cookies by setting them to expire in the past
-    document.cookie = 'accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
-    document.cookie = 'refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax';
+    document.cookie = `accessToken=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=${sameSite}`;
+    document.cookie = `refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=${sameSite}`;
     
     console.log('Auth cookies cleared');
   }

@@ -3,6 +3,7 @@
 import * as React from "react"
 import Image from "next/image"
 import dynamic from "next/dynamic"
+import { useSearchParams } from "next/navigation"
 import { useDropzone } from "react-dropzone"
 import type { ColorResult } from "react-color"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
@@ -38,6 +39,7 @@ const ChromePicker = dynamic(() => import("react-color").then((mod) => mod.Chrom
 })
 
 import { API_CONFIG } from "@/lib/api/config"
+import { chatbotService, type Chatbot } from "@/lib/api/chatbot.service"
 import { cn } from "@/lib/utils"
 import {
   Card,
@@ -246,6 +248,7 @@ type ManifestError = {
 }
 
 const STEPS = [
+  { title: "Create Chatbot", subtitle: "Name your assistant" },
   { title: "Upload Dataset", subtitle: "Ingest your knowledge sources" },
   { title: "Configure Embedding", subtitle: "Select embeddings and storage" },
   { title: "Choose LLM", subtitle: "Connect provider and prompt" },
@@ -490,12 +493,191 @@ export function TrainLLMTab() {
   const [deploymentTab, setDeploymentTab] = React.useState("javascript")
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false)
 
+  const searchParams = useSearchParams()
+  const editId = searchParams.get('editId')
+  
+  const [chatbotId, setChatbotId] = React.useState<string | null>(null)
+  const [chatbotNameInput, setChatbotNameInput] = React.useState("")
+  const [isCreatingChatbot, setIsCreatingChatbot] = React.useState(false)
+  const [isEditMode, setIsEditMode] = React.useState(false)
+  const [isLoadingChatbot, setIsLoadingChatbot] = React.useState(false)
+
   const clearPreview = React.useCallback(() => {
     setPreviewResults([])
     setPreviewError(null)
     setShowPreview(false)
     setEmbeddingSummary(null)
   }, [])
+
+  // Load existing chatbot data if editId is present
+  React.useEffect(() => {
+    if (!editId) return
+
+    const loadChatbot = async () => {
+      try {
+        setIsLoadingChatbot(true)
+        const chatbot = await chatbotService.getChatbot(editId)
+        
+        // Set edit mode and chatbot ID
+        setIsEditMode(true)
+        setChatbotId(chatbot._id)
+        setChatbotNameInput(chatbot.name)
+
+        // Pre-fill dataset data and create preview results to show files
+        if (chatbot.dataset) {
+          if (chatbot.dataset.type) {
+            setDatasetType(chatbot.dataset.type as DatasetType)
+          }
+          
+          // Create preview results from saved files
+          if (chatbot.dataset.files && chatbot.dataset.files.length > 0) {
+            const filePreviewResults: PreviewDatasetResult[] = chatbot.dataset.files.map((file, idx) => ({
+              id: `saved-file-${idx}`,
+              label: file.name,
+              source: chatbot.dataset!.type as DatasetType,
+              status: "success" as const,
+              data: {
+                dataset_type: chatbot.dataset!.type as DatasetType,
+                chunk_size: 1000,
+                chunk_overlap: 200,
+                total_chunks: file.chunks || 0,
+                chunks: []
+              }
+            }))
+            setPreviewResults(filePreviewResults)
+            setShowPreview(true)
+          }
+          
+          // Handle URLs
+          if (chatbot.dataset.urls && chatbot.dataset.urls.length > 0) {
+            setWebsiteUrls(chatbot.dataset.urls)
+          }
+        }
+
+        // Pre-fill embedding data
+        if (chatbot.embedding) {
+          if (chatbot.embedding.model) {
+            setSelectedModel(chatbot.embedding.model as EmbeddingModelId)
+          }
+          if (chatbot.embedding.vectorStore) {
+            setVectorStore(chatbot.embedding.vectorStore as VectorStoreOption)
+          }
+          if (chatbot.embedding.pineconeConfig?.indexName) {
+            setIndexName(chatbot.embedding.pineconeConfig.indexName)
+          }
+          if (chatbot.embedding.isEmbedded) {
+            setEmbeddingSummary({
+              results: chatbot.dataset?.files?.map((f, idx) => ({
+                dataset_id: `file-${idx}`,
+                label: f.name,
+                vector_store: chatbot.embedding!.vectorStore as VectorStoreOption,
+                embedding_model: chatbot.embedding!.model as EmbeddingModelId,
+                chunks_processed: f.chunks || 0,
+                chunks_embedded: f.chunks || 0,
+              })) || [],
+              errors: []
+            })
+          }
+        }
+
+        // Pre-fill LLM data
+        if (chatbot.llm) {
+          if (chatbot.llm.provider) {
+            setProvider(chatbot.llm.provider as LLMProviderId)
+          }
+          if (chatbot.llm.model) {
+            setModel(chatbot.llm.model)
+          }
+          if (chatbot.llm.topK) {
+            setChunksToRetrieve(chatbot.llm.topK)
+          }
+          if (chatbot.llm.systemPrompt) {
+            setSystemPrompt(chatbot.llm.systemPrompt)
+          }
+        }
+
+        // Pre-fill evaluation data
+        if (chatbot.evaluation?.metrics) {
+          setEvaluationMetrics(chatbot.evaluation.metrics)
+          if (chatbot.evaluation.rows) {
+            setEvaluationRows(chatbot.evaluation.rows)
+          }
+          if (chatbot.evaluation.justifications) {
+            setEvaluationJustifications(chatbot.evaluation.justifications)
+          }
+        }
+
+        // Start from step 0 so user can edit bot name
+        setActiveStep(0)
+
+        toast({
+          title: "Editing chatbot",
+          description: `Loaded configuration for "${chatbot.name}"`
+        })
+      } catch (error: any) {
+        console.error("Failed to load chatbot:", error)
+        toast({
+          title: "Error loading chatbot",
+          description: error.message || "Failed to load chatbot data"
+        })
+      } finally {
+        setIsLoadingChatbot(false)
+      }
+    }
+
+    loadChatbot()
+  }, [editId, toast])
+
+  const handleCreateChatbot = React.useCallback(async () => {
+    if (!chatbotNameInput.trim()) {
+      toast({ title: "Name required", description: "Please enter a name for your chatbot." })
+      return
+    }
+
+    setIsCreatingChatbot(true)
+    try {
+      const response = await axios.post(
+        `${API_CONFIG.BASE_URL.replace(/\/$/, "")}/chatbots`,
+        { name: chatbotNameInput },
+        { withCredentials: true }
+      )
+      setChatbotId(response.data._id)
+      toast({ title: "Chatbot created", description: `Started training pipeline for ${response.data.name}` })
+      setActiveStep(1)
+    } catch (error) {
+      console.error("Failed to create chatbot:", error)
+      toast({ title: "Creation failed", description: "Could not create chatbot. Please try again." })
+    } finally {
+      setIsCreatingChatbot(false)
+    }
+  }, [chatbotNameInput, toast])
+
+  const updateChatbotState = React.useCallback(async (data: any) => {
+    if (!chatbotId) {
+      console.error("Cannot update chatbot: No chatbotId");
+      return;
+    }
+
+    console.log("updateChatbotState called with:", JSON.stringify(data, null, 2));
+    console.log("chatbotId:", chatbotId);
+
+    try {
+      const response = await axios.put(
+        `${API_CONFIG.BASE_URL.replace(/\/$/, "")}/chatbots/${chatbotId}`,
+        data,
+        { withCredentials: true }
+      );
+      
+      console.log("Update successful:", response.data);
+      toast({ title: "Progress saved" });
+    } catch (error) {
+      console.error("Error updating chatbot state:", error);
+      const message = axios.isAxiosError(error)
+        ? error.response?.data?.message || error.message
+        : "Failed to save progress";
+      toast({ title: "Save failed", description: message });
+    }
+  }, [chatbotId, toast]);
 
   const handleDatasetTypeChange = React.useCallback((type: DatasetType) => {
     setDatasetType(type)
@@ -565,7 +747,7 @@ export function TrainLLMTab() {
         : error instanceof Error
           ? error.message
           : "Unable to download sample CSV"
-      toast({ title: "Download failed", description: message, variant: "destructive" })
+      toast({ title: "Download failed", description: message })
     } finally {
       setIsSampleDownloading(false)
     }
@@ -573,25 +755,25 @@ export function TrainLLMTab() {
 
   const handleRunEvaluation = React.useCallback(async () => {
     if (!model) {
-      toast({ title: "Model required", description: "Select an LLM model before running evaluation.", variant: "destructive" })
+      toast({ title: "Model required", description: "Select an LLM model before running evaluation." })
       return
     }
 
     if (!evaluationCsv) {
       setEvaluationCsvError("Upload an evaluation CSV before running metrics.")
-      toast({ title: "CSV required", description: "Upload the filled evaluation CSV to continue.", variant: "destructive" })
+      toast({ title: "CSV required", description: "Upload the filled evaluation CSV to continue." })
       return
     }
 
     const successfulPreviews = previewResults.filter((result) => result.status === "success" && result.data)
     const datasetIds = successfulPreviews.map((result) => result.id)
     if (datasetIds.length === 0) {
-      toast({ title: "Datasets missing", description: "Generate dataset previews before running evaluation.", variant: "destructive" })
+      toast({ title: "Datasets missing", description: "Generate dataset previews before running evaluation." })
       return
     }
 
     if (vectorStore === "pinecone" && (!pineconeKey.trim() || !indexName.trim())) {
-      toast({ title: "Missing Pinecone configuration", description: "Provide Pinecone credentials before running evaluation.", variant: "destructive" })
+      toast({ title: "Missing Pinecone configuration", description: "Provide Pinecone credentials before running evaluation." })
       return
     }
 
@@ -635,6 +817,23 @@ export function TrainLLMTab() {
       setEvaluationMetrics(data.metrics ?? null)
       setEvaluationRows(Array.isArray(data.rows) ? data.rows : [])
       setEvaluationJustifications(data.justifications ?? {})
+      
+      // Save evaluation results to MongoDB
+      if (chatbotId) {
+        await updateChatbotState({
+          evaluation: {
+            file: {
+              name: evaluationCsv.name,
+              size: evaluationCsv.size,
+              path: evaluationCsv.name
+            },
+            metrics: data.metrics ?? null,
+            rows: Array.isArray(data.rows) ? data.rows : [],
+            justifications: data.justifications ?? {}
+          }
+        })
+      }
+      
       toast({ title: "Evaluation complete", description: "Generated scores from your evaluation dataset." })
     } catch (error) {
       const message = axios.isAxiosError(error)
@@ -643,11 +842,12 @@ export function TrainLLMTab() {
           ? error.message
           : "Evaluation failed"
       setEvaluationCsvError(message)
-      toast({ title: "Evaluation failed", description: message, variant: "destructive" })
+      toast({ title: "Evaluation failed", description: message })
     } finally {
       setIsEvaluating(false)
     }
   }, [
+    chatbotId,
     chunksToRetrieve,
     evaluationCsv,
     indexName,
@@ -658,6 +858,7 @@ export function TrainLLMTab() {
     selectedModel,
     systemPrompt,
     toast,
+    updateChatbotState,
     vectorStore,
   ])
 
@@ -701,7 +902,7 @@ export function TrainLLMTab() {
       const message = "Add at least one dataset before previewing."
       setPreviewError(message)
       setShowPreview(true)
-      toast({ title: "Preview unavailable", description: message, variant: "destructive" })
+      toast({ title: "Preview unavailable", description: message })
       return
     }
 
@@ -776,7 +977,7 @@ export function TrainLLMTab() {
       if (payload.errors?.length) {
         const failureMessage = payload.errors.map((err) => `${err.label ?? "Dataset"}: ${err.message}`).join("; ")
         setPreviewError(failureMessage)
-        toast({ title: "Preview issues", description: failureMessage, variant: "destructive" })
+        toast({ title: "Preview issues", description: failureMessage })
       } else {
         setPreviewError(null)
       }
@@ -790,7 +991,6 @@ export function TrainLLMTab() {
       toast({
         title: "Preview failed",
         description: message,
-        variant: "destructive",
       })
     } finally {
       setIsPreviewLoading(false)
@@ -876,7 +1076,7 @@ export function TrainLLMTab() {
         })
       } else if (errorCount > 0) {
         const message = embeddingSummary.errors.map((error) => `${error.label}: ${error.message}`).join("; ")
-        toast({ title: "Embedding failed", description: message, variant: "destructive" })
+        toast({ title: "Embedding failed", description: message })
       }
     }
   }, [embeddingProgress, embeddingSummary, isEmbedding, toast])
@@ -944,7 +1144,7 @@ export function TrainLLMTab() {
             : "Unable to fetch LLM models"
 
         setModelError(message)
-        toast({ title: "Failed to load models", description: message, variant: "destructive" })
+        toast({ title: "Failed to load models", description: message })
       } finally {
         if (active) {
           setIsModelLoading(false)
@@ -1046,7 +1246,6 @@ export function TrainLLMTab() {
       toast({
         title: "Missing Pinecone credentials",
         description: "Provide both an API key and index name to continue.",
-        variant: "destructive",
       })
       return
     }
@@ -1064,7 +1263,6 @@ export function TrainLLMTab() {
       toast({
         title: "No datasets to embed",
         description: "Generate chunk previews before starting the embedding pipeline.",
-        variant: "destructive",
       })
       return
     }
@@ -1074,7 +1272,6 @@ export function TrainLLMTab() {
       toast({
         title: "Missing Pinecone credentials",
         description: "Provide both an API key and index name to continue.",
-        variant: "destructive",
       })
       return
     }
@@ -1136,7 +1333,7 @@ export function TrainLLMTab() {
       if (vectorStore === "pinecone") {
         setConnectionStatus("error")
       }
-      toast({ title: "Embedding failed", description: message, variant: "destructive" })
+      toast({ title: "Embedding failed", description: message })
     } finally {
       setIsEmbedding(false)
     }
@@ -1169,7 +1366,6 @@ export function TrainLLMTab() {
       toast({
         title: "Add a question",
         description: "Enter a question to verify your LLM configuration.",
-        variant: "destructive",
       })
       return
     }
@@ -1178,7 +1374,6 @@ export function TrainLLMTab() {
       toast({
         title: "Select an LLM model",
         description: "Choose a model before running a test query.",
-        variant: "destructive",
       })
       return
     }
@@ -1190,7 +1385,6 @@ export function TrainLLMTab() {
       toast({
         title: "Preview required",
         description: "Generate dataset previews before running a test query.",
-        variant: "destructive",
       })
       return
     }
@@ -1199,7 +1393,6 @@ export function TrainLLMTab() {
       toast({
         title: "Missing Pinecone configuration",
         description: "Enter your Pinecone API key and index name to query the vector store.",
-        variant: "destructive",
       })
       return
     }
@@ -1283,6 +1476,26 @@ export function TrainLLMTab() {
         : []
 
       setTestContext(safeContext)
+      
+      // Save test question and answer to MongoDB
+      if (chatbotId) {
+        try {
+          await axios.post(
+            `${API_CONFIG.BASE_URL.replace(/\/$/, "")}/chatbots/${chatbotId}/test-result`,
+            {
+              question: trimmedQuestion,
+              answer: data.answer || "",
+              context: safeContext,
+            },
+            { withCredentials: true }
+          );
+          console.log("Test result saved to MongoDB");
+        } catch (saveError) {
+          console.error("Failed to save test result:", saveError);
+          // Don't show error to user, just log it
+        }
+      }
+      
       toast({ title: "LLM test successful", description: "Generated a response using your configured model." })
     } catch (error) {
       let message = "Unable to execute LLM test"
@@ -1301,11 +1514,12 @@ export function TrainLLMTab() {
         message = error.message
       }
 
-      toast({ title: "LLM test failed", description: message, variant: "destructive" })
+      toast({ title: "LLM test failed", description: message })
     } finally {
       setIsTesting(false)
     }
   }, [
+    chatbotId,
     chunksToRetrieve,
     indexName,
     model,
@@ -1323,14 +1537,200 @@ export function TrainLLMTab() {
     evaluationMetrics && (evaluationMetrics.accuracy < 85 || evaluationMetrics.evaluationScore < 80)
   )
 
-  const handleNextStep = () => setActiveStep((step) => Math.min(step + 1, STEPS.length - 1))
-  const handlePreviousStep = () => setActiveStep((step) => Math.max(step - 1, 0))
+  const handleNext = React.useCallback(async () => {
+    if (activeStep === 0) {
+      // Create Chatbot Step - Skip if editing
+      if (isEditMode) {
+        setActiveStep(1)
+        return
+      }
+      await handleCreateChatbot()
+      return
+    }
+
+    if (activeStep === 1) {
+      // Upload Dataset Step
+      const successfulPreviews = previewResults.filter((r) => r.status === "success" && r.data)
+      if (successfulPreviews.length === 0) {
+        toast({ title: "No datasets", description: "Please upload and preview at least one dataset." })
+        return
+      }
+      
+      // Save Dataset State - only name, size, and chunks count
+      const currentFileUploads = fileUploads[datasetType as FileDatasetType] || [];
+      
+      const files = successfulPreviews
+        .filter(p => p.source !== "website")
+        .map(p => {
+          const matchingFile = currentFileUploads.find(fu => fu.id === p.id);
+          return {
+            name: p.label,
+            size: matchingFile ? matchingFile.file.size : 0,
+            chunks: p.data?.total_chunks || 0,
+          };
+        });
+
+      const urls = successfulPreviews
+        .filter(p => p.source === "website")
+        .map(p => p.label);
+
+      const datasetState = {
+        dataset: {
+          type: datasetType,
+          files: files,
+          urls: urls,
+        }
+      }
+      
+      console.log("Saving dataset state:", JSON.stringify(datasetState, null, 2));
+      await updateChatbotState(datasetState)
+    }
+
+    if (activeStep === 2) {
+      // Configure Embedding Step
+      if (!embeddingSummary && !isEmbedding) {
+        toast({ title: "Embedding required", description: "Please run the embedding process first." })
+        return
+      }
+
+      // Save Embedding State
+      const embeddingState = {
+        embedding: {
+          model: selectedModel,
+          vectorStore: vectorStore,
+          pineconeConfig: vectorStore === "pinecone" ? {
+            apiKey: pineconeKey,
+            indexName: indexName
+          } : undefined,
+          stats: {
+            chunksProcessed: embeddingSummary?.results.reduce((acc, r) => acc + r.chunks_processed, 0) || 0,
+            chunksEmbedded: embeddingSummary?.results.reduce((acc, r) => acc + r.chunks_embedded, 0) || 0
+          },
+          isEmbedded: true
+        }
+      }
+      await updateChatbotState(embeddingState)
+    }
+
+    if (activeStep === 3) {
+      // Choose LLM Step
+      if (!model) {
+        toast({ title: "Model required", description: "Please select an LLM model." })
+        return
+      }
+
+      // Save LLM State
+      const llmState = {
+        llm: {
+          provider,
+          model,
+          topK: chunksToRetrieve,
+          systemPrompt
+        }
+      }
+      await updateChatbotState(llmState)
+    }
+
+    if (activeStep === 4) {
+       // Test & Evaluate Step
+       if (evaluationCsv) {
+         const evalState = {
+           evaluation: {
+             file: {
+               name: evaluationCsv.name,
+               size: evaluationCsv.size,
+               path: evaluationCsv.name
+             },
+             metrics: evaluationMetrics,
+             rows: evaluationRows,
+             justifications: evaluationJustifications
+           }
+         }
+         await updateChatbotState(evalState)
+       }
+    }
+
+    setActiveStep((prev) => Math.min(prev + 1, STEPS.length - 1))
+  }, [
+    activeStep, 
+    isEditMode,
+    handleCreateChatbot, 
+    previewResults, 
+    datasetType, 
+    fileUploads, 
+    updateChatbotState, 
+    embeddingSummary, 
+    isEmbedding, 
+    selectedModel, 
+    vectorStore, 
+    pineconeKey, 
+    indexName, 
+    model, 
+    provider, 
+    chunksToRetrieve, 
+    systemPrompt, 
+    evaluationCsv, 
+    evaluationMetrics, 
+    evaluationRows, 
+    evaluationJustifications, 
+    toast
+  ])
+
+  const handleBack = React.useCallback(() => {
+    setActiveStep((prev) => Math.max(prev - 1, 0))
+  }, [])
+
   const handleSaveDraft = () =>
-    toast({ title: "Draft saved", description: "We’ll keep your configuration ready for the next session." })
+    toast({ title: "Draft saved", description: "We'll keep your configuration ready for the next session." })
 
   const renderStepContent = () => {
     switch (activeStep) {
       case 0:
+        return (
+          <div className="flex flex-col items-center justify-center space-y-6 py-10">
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-bold tracking-tight">Name your Chatbot</h2>
+              <p className="text-muted-foreground">
+                Give your AI assistant a unique identity to get started.
+              </p>
+            </div>
+            <Card className="w-full max-w-md">
+              <CardContent className="pt-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="chatbot-name">Chatbot Name</Label>
+                    <Input
+                      id="chatbot-name"
+                      placeholder="e.g. Support Assistant, Sales Bot..."
+                      value={chatbotNameInput}
+                      onChange={(e) => setChatbotNameInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !isCreatingChatbot) {
+                          handleCreateChatbot()
+                        }
+                      }}
+                    />
+                  </div>
+                  <Button 
+                    className="w-full" 
+                    onClick={handleCreateChatbot} 
+                    disabled={isCreatingChatbot || !chatbotNameInput.trim()}
+                  >
+                    {isCreatingChatbot ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      "Create & Continue"
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )
+      case 1:
         return (
           <div className="space-y-6">
             <section className="grid gap-6 lg:grid-cols-2">
@@ -1362,13 +1762,13 @@ export function TrainLLMTab() {
               <Button variant="outline" onClick={handleSaveDraft}>
                 Save draft
               </Button>
-              <Button onClick={handleNextStep}>
+              <Button onClick={handleNext}>
                 Next: Configure Embedding
               </Button>
             </div>
           </div>
         )
-      case 1:
+      case 2:
         return (
           <div className="space-y-6">
             <EmbeddingConfiguration
@@ -1388,21 +1788,21 @@ export function TrainLLMTab() {
               embeddingSummary={embeddingSummary}
             />
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <Button variant="outline" onClick={handlePreviousStep}>
+              <Button variant="outline" onClick={handleBack}>
                 Back to upload
               </Button>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={handleSaveDraft}>
                   Save draft
                 </Button>
-                <Button onClick={handleNextStep}>
+                <Button onClick={handleNext}>
                   Next: Choose LLM
                 </Button>
               </div>
             </div>
           </div>
         )
-      case 2:
+      case 3:
         return (
           <div className="space-y-6">
             <LLMConfiguration
@@ -1431,21 +1831,21 @@ export function TrainLLMTab() {
               llmModels={llmModels}
             />
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <Button variant="outline" onClick={handlePreviousStep}>
+              <Button variant="outline" onClick={handleBack}>
                 Back to embedding
               </Button>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={handleSaveDraft}>
                   Save draft
                 </Button>
-                <Button onClick={handleNextStep}>
+                <Button onClick={handleNext}>
                   Next: Test &amp; Evaluate
                 </Button>
               </div>
             </div>
           </div>
         )
-      case 3:
+      case 4:
         return (
           <div className="space-y-6">
             <EvaluationSection
@@ -1465,21 +1865,21 @@ export function TrainLLMTab() {
               onSelectResult={setSelectedResult}
             />
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <Button variant="outline" onClick={handlePreviousStep}>
+              <Button variant="outline" onClick={handleBack}>
                 Back to LLM setup
               </Button>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={handleSaveDraft}>
                   Save draft
                 </Button>
-                <Button onClick={handleNextStep}>
+                <Button onClick={handleNext}>
                   Next: Deploy Chatbot
                 </Button>
               </div>
             </div>
           </div>
         )
-      case 4:
+      case 5:
       default:
         return (
           <div className="space-y-6">
@@ -1498,7 +1898,7 @@ export function TrainLLMTab() {
               setOpenDeleteDialog={setShowDeleteConfirm}
             />
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <Button variant="outline" onClick={handlePreviousStep}>
+              <Button variant="outline" onClick={handleBack}>
                 Back to evaluation
               </Button>
               <Button variant="outline" onClick={handleSaveDraft}>
@@ -1546,12 +1946,12 @@ type StepperProps = {
 
 function Stepper({ activeStep, onStepChange }: StepperProps) {
   return (
-    <Card className="border-none bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white shadow-lg">
+    <Card className="border-none bg-gradient-to-r from-card via-background to-card text-foreground shadow-lg">
       <CardHeader className="space-y-4">
         <div className="flex items-center justify-between gap-4">
           <div>
             <CardTitle className="text-2xl">Train Your Krira AI Assistant</CardTitle>
-            <CardDescription className="text-slate-300">
+            <CardDescription className="text-muted-foreground">
               Follow the guided workflow to upload data, configure embeddings, and deploy a production-ready chatbot.
             </CardDescription>
           </div>
@@ -1560,7 +1960,7 @@ function Stepper({ activeStep, onStepChange }: StepperProps) {
           </Badge>
         </div>
         <div className="flex flex-col gap-4">
-          <div className="grid gap-3 md:grid-cols-5">
+          <div className="grid gap-3 grid-cols-6">
             {STEPS.map((step, index) => {
               const status = index === activeStep ? "active" : index < activeStep ? "completed" : "pending"
               return (
@@ -1591,7 +1991,7 @@ function Stepper({ activeStep, onStepChange }: StepperProps) {
                     </span>
                     <div className="flex flex-col">
                       <span className="text-sm font-semibold">{step.title}</span>
-                      <span className="text-xs text-slate-300">{step.subtitle}</span>
+                      <span className="text-xs text-muted-foreground">{step.subtitle}</span>
                     </div>
                   </div>
                 </button>

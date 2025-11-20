@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useSearchParams } from "next/navigation"
 import { BellIcon, Loader2, LogOut } from "lucide-react"
 
 import { AppSidebar } from "./appSidebar"
@@ -132,6 +133,19 @@ export default function DashboardLayout() {
   const openBillingTab = React.useCallback(() => setActiveTab("account-billing"), [setActiveTab])
   const openSettingsTab = React.useCallback(() => setActiveTab("account-settings"), [setActiveTab])
 
+  const searchParams = useSearchParams()
+
+  // Handle URL tab parameter for navigation
+  React.useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam) {
+      const validTab = DASHBOARD_TABS.find(tab => tab.value === tabParam)
+      if (validTab) {
+        setActiveTab(tabParam)
+      }
+    }
+  }, [searchParams])
+
   React.useEffect(() => {
     let isMounted = true
 
@@ -164,8 +178,7 @@ export default function DashboardLayout() {
           if (status !== 401) {
             toast({
               title: "Unable to load account data",
-              description: message ?? "Please try again.",
-              variant: "destructive",
+              description: message ?? "Please try again."
             })
           }
           setProfile(null)
@@ -192,8 +205,7 @@ export default function DashboardLayout() {
       const message = error instanceof Error ? error.message : undefined
       toast({
         title: "Logout failed",
-        description: message ?? "Please try again.",
-        variant: "destructive",
+        description: message ?? "Please try again."
       })
     } finally {
       setIsLoggingOut(false)

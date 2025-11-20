@@ -21,6 +21,14 @@ export const API_ENDPOINTS = {
     PROFILE: '/auth/profile',
     ADMIN_PROFILE: '/auth/admin/profile',
   },
+  CHATBOT: {
+    GET_ALL: '/chatbots',
+    GET_ONE: (id: string) => `/chatbots/${id}`,
+    CREATE: '/chatbots',
+    UPDATE: (id: string) => `/chatbots/${id}`,
+    DELETE: (id: string) => `/chatbots/${id}`,
+    ADD_TEST_RESULT: (id: string) => `/chatbots/${id}/test-result`,
+  },
 };
 
 // Response status codes

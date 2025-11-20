@@ -50,38 +50,41 @@ class TokenService {
   setTokenCookies(res, accessToken, refreshToken) {
     const isProduction = ENV.NODE_ENV === 'production';
 
+    // Cookie configuration for production (cross-origin) vs development
+    const cookieConfig = {
+      httpOnly: true,
+      secure: isProduction, // HTTPS only in production
+      sameSite: isProduction ? 'none' : 'lax', // 'none' required for cross-origin in production
+      path: '/',
+    };
+
     // Access token cookie (15 minutes)
     res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'strict' : 'lax',
+      ...cookieConfig,
       maxAge: 15 * 60 * 1000, // 15 minutes
-      path: '/',
     });
 
     // Refresh token cookie (7 days)
     res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'strict' : 'lax',
+      ...cookieConfig,
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      path: '/',
     });
   }
 
   // Clear token cookies
   clearTokenCookies(res) {
-    res.cookie('accessToken', '', {
-      httpOnly: true,
-      expires: new Date(0),
-      path: '/',
-    });
+    const isProduction = ENV.NODE_ENV === 'production';
 
-    res.cookie('refreshToken', '', {
+    const cookieConfig = {
       httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
       expires: new Date(0),
       path: '/',
-    });
+    };
+
+    res.cookie('accessToken', '', cookieConfig);
+    res.cookie('refreshToken', '', cookieConfig);
   }
 }
 
