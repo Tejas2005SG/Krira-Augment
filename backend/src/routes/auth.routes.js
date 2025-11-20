@@ -1,6 +1,6 @@
 import express from 'express';
 import { signup,verifyOtp, resendOtp, login, logout, forgotPassword, resetPassword, profile, loginWithGoogle, signupWithGoogle} from '../controllers/auth.controller.js';
-import { authMiddleware,adminMiddlware } from '../middlewares/auth.Middleware.js';
+import { authMiddleware,adminMiddlware } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 

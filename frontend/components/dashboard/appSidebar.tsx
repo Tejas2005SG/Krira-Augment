@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 import {
   BarChart3,
   Brain,
@@ -10,7 +10,7 @@ import {
   LogOut,
   MessageSquare,
   Sparkles,
-} from "lucide-react"
+} from "lucide-react";
 
 import {
   Sidebar,
@@ -24,29 +24,30 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
+} from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@/components/ui/tooltip";
+import Image from "next/image";
 
 type SidebarItem = {
-  value: string
-  label: string
-  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
-  description: string
-}
+  value: string;
+  label: string;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  description: string;
+};
 
 const NAVIGATION_ITEMS: SidebarItem[] = [
   {
     value: "train-llm",
-    label: "Train LLM",
+    label: "RAG Pipeline",
     icon: Brain,
     description: "Configure training workflows",
   },
@@ -74,20 +75,20 @@ const NAVIGATION_ITEMS: SidebarItem[] = [
     icon: CreditCard,
     description: "Plan comparison",
   },
-]
+];
 
 type AppSidebarProps = {
-  activeItem: string
-  onSelect: (value: string) => void
-  displayName: string
-  displayEmail: string
-  displayRole: string
-  planLabel: string
-  isLoadingPlan: boolean
-  initials: string
-  onLogout: () => void
-  isLoggingOut: boolean
-}
+  activeItem: string;
+  onSelect: (value: string) => void;
+  displayName: string;
+  displayEmail: string;
+  displayRole: string;
+  planLabel: string;
+  isLoadingPlan: boolean;
+  initials: string;
+  onLogout: () => void;
+  isLoggingOut: boolean;
+};
 
 export function AppSidebar({
   activeItem,
@@ -101,11 +102,11 @@ export function AppSidebar({
   onLogout,
   isLoggingOut,
 }: AppSidebarProps) {
-  const { open } = useSidebar()
+  const { open } = useSidebar();
 
   return (
     <TooltipProvider delayDuration={0}>
-      <Sidebar 
+      <Sidebar
         collapsible="icon"
         className="border-r border-sidebar-border bg-sidebar [&[data-state=collapsed]]:w-[90px]"
       >
@@ -114,11 +115,19 @@ export function AppSidebar({
           <div className="flex items-center justify-between p-2">
             {open ? (
               <div className="flex items-center gap-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/80 shadow-md">
-                  <Sparkles className="h-5 w-5 text-primary-foreground" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-50 shadow-md">
+                  <Image
+                    src="/logo2.png"
+                    alt="User Avatar"
+                    width={60}
+                    height={60}
+                    
+                  />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold leading-tight text-sidebar-foreground">Krira AI</p>
+                  <p className="text-sm font-semibold leading-tight text-sidebar-foreground">
+                    Krira AI
+                  </p>
                   <p className="text-xs text-muted-foreground">AI Dashboard</p>
                 </div>
               </div>
@@ -141,8 +150,8 @@ export function AppSidebar({
             <SidebarGroupContent>
               <SidebarMenu className="gap-1">
                 {NAVIGATION_ITEMS.map((item) => {
-                  const Icon = item.icon
-                  const isActive = activeItem === item.value
+                  const Icon = item.icon;
+                  const isActive = activeItem === item.value;
 
                   const menuButton = (
                     <SidebarMenuButton
@@ -157,20 +166,29 @@ export function AppSidebar({
                           : "hover:bg-sidebar-accent/50 text-sidebar-foreground"
                       }`}
                     >
-                      <Icon className={`h-5 w-5 ${isActive ? "text-sidebar-primary" : ""} ${!open ? "shrink-0" : "h-4 w-4"}`} />
-                      {open && <span className="flex-1 ml-2">{item.label}</span>}
+                      <Icon
+                        className={`h-5 w-5 ${
+                          isActive ? "text-sidebar-primary" : ""
+                        } ${!open ? "shrink-0" : "h-4 w-4"}`}
+                      />
+                      {open && (
+                        <span className="flex-1 ml-2">{item.label}</span>
+                      )}
                       {open && isActive && (
                         <div className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-sidebar-primary" />
                       )}
                     </SidebarMenuButton>
-                  )
+                  );
 
                   return (
                     <SidebarMenuItem key={item.value} className="mb-1">
                       {!open ? (
                         <Tooltip>
                           <TooltipTrigger asChild>{menuButton}</TooltipTrigger>
-                          <TooltipContent side="right" className="flex flex-col gap-1">
+                          <TooltipContent
+                            side="right"
+                            className="flex flex-col gap-1"
+                          >
                             <p className="font-semibold">{item.label}</p>
                             <p className="text-xs text-muted-foreground">
                               {item.description}
@@ -181,7 +199,7 @@ export function AppSidebar({
                         menuButton
                       )}
                     </SidebarMenuItem>
-                  )
+                  );
                 })}
               </SidebarMenu>
             </SidebarGroupContent>
@@ -194,13 +212,18 @@ export function AppSidebar({
             <>
               <div className="flex items-center gap-3 rounded-lg bg-sidebar-accent/50 p-3 transition-colors">
                 <Avatar className="h-10 w-10 ring-2 ring-sidebar-primary/20">
-                  <AvatarImage src="/images/avatar.png" alt={`${displayName} avatar`} />
+                  <AvatarImage
+                    src="/images/avatar.png"
+                    alt={`${displayName} avatar`}
+                  />
                   <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex flex-1 flex-col gap-1 min-w-0">
-                  <span className="text-sm font-semibold text-sidebar-foreground">{displayName}</span>
+                  <span className="text-sm font-semibold text-sidebar-foreground">
+                    {displayName}
+                  </span>
                   <div className="flex items-center gap-2 min-w-0">
                     <Badge
                       variant="secondary"
@@ -232,7 +255,11 @@ export function AppSidebar({
                 onClick={onLogout}
                 disabled={isLoggingOut}
               >
-                {isLoggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+                {isLoggingOut ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <LogOut className="h-4 w-4" />
+                )}
                 {isLoggingOut ? "Signing out..." : "Logout"}
               </Button>
             </>
@@ -242,7 +269,10 @@ export function AppSidebar({
                 <TooltipTrigger asChild>
                   <div className="flex cursor-default items-center justify-center rounded-lg bg-sidebar-accent/50 p-2">
                     <Avatar className="h-12 w-12 ring-2 ring-sidebar-primary/20">
-                      <AvatarImage src="/images/avatar.png" alt={`${displayName} avatar`} />
+                      <AvatarImage
+                        src="/images/avatar.png"
+                        alt={`${displayName} avatar`}
+                      />
                       <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-sm">
                         {initials}
                       </AvatarFallback>
@@ -258,11 +288,13 @@ export function AppSidebar({
                     {isLoadingPlan ? "Loading" : planLabel || "Plan"}
                   </Badge>
                   {(displayEmail || displayRole) && (
-                    <p className="text-xs text-muted-foreground">{displayEmail || displayRole}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {displayEmail || displayRole}
+                    </p>
                   )}
                 </TooltipContent>
               </Tooltip>
-              
+
               <Separator className="my-2" />
               <div className="flex justify-center">
                 <Tooltip>
@@ -274,7 +306,11 @@ export function AppSidebar({
                       onClick={onLogout}
                       disabled={isLoggingOut}
                     >
-                      {isLoggingOut ? <Loader2 className="h-5 w-5 animate-spin" /> : <LogOut className="h-5 w-5" />}
+                      {isLoggingOut ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <LogOut className="h-5 w-5" />
+                      )}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="right">
@@ -287,5 +323,5 @@ export function AppSidebar({
         </SidebarFooter>
       </Sidebar>
     </TooltipProvider>
-  )
+  );
 }

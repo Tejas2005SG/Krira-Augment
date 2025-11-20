@@ -94,7 +94,7 @@ export default function HomePage() {
                     className="hover:bg-background dark:hover:border-t-border bg-muted group mx-auto flex w-fit items-center gap-4 rounded-full border p-1 pl-4 shadow-md shadow-zinc-950/5 transition-colors duration-300 dark:border-t-white/5 dark:shadow-zinc-950"
                   >
                     <span className="text-foreground text-sm">
-                      Introducing Support for AI Models
+                      Now supporting GPT 5.1 & Claude 4.5 Sonnet
                     </span>
                     <span className="dark:border-background block h-4 w-0.5 border-l bg-white dark:bg-zinc-700"></span>
 
@@ -117,7 +117,7 @@ export default function HomePage() {
                   as="h1"
                   className="mx-auto mt-8 max-w-4xl text-balance text-5xl max-md:font-semibold md:text-7xl lg:mt-16 xl:text-[5.25rem]"
                 >
-                  Modern Solutions for Customer Engagement
+                  Production-Ready RAG in Minutes, Not Months
                 </TextEffect>
                 <TextEffect
                   per="line"
@@ -127,8 +127,7 @@ export default function HomePage() {
                   as="p"
                   className="mx-auto mt-6 max-w-2xl text-balance text-lg md:mt-8"
                 >
-                  Highly customizable components for building modern websites
-                  and applications that look and feel the way you mean it.
+                  KRIRA AI automates chunking, embeddings, retrieval, reranking, and LLM optimization—zero configuration required. Deploy enterprise-grade RAG systems with unmatched speed and accuracy.
                 </TextEffect>
 
                 <AnimatedGroup
@@ -167,7 +166,7 @@ export default function HomePage() {
                     className="h-10.5 rounded-xl px-5"
                   >
                     <Link href="#link">
-                      <span className="text-nowrap">Request a demo</span>
+                      <span className="text-nowrap">Book a Demo</span>
                     </Link>
                   </Button>
                 </AnimatedGroup>
@@ -198,7 +197,7 @@ export default function HomePage() {
                   />
                   <Image
                     className="z-2 border-border/25 aspect-15/8 relative rounded-2xl border dark:hidden"
-                    src="/hero-light.webp"
+                    src="/hero-light.png"
                     alt="app screen"
                     width="2700"
                     height="1440"

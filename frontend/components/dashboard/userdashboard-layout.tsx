@@ -47,7 +47,7 @@ type DashboardTab = {
 const DASHBOARD_TABS: DashboardTab[] = [
   {
     value: "train-llm",
-    label: "Train LLM",
+    label: "RAG Pipeline",
     description: "Create Complete RAG pipelines with ease",
     component: <TrainLLMTab />,
   },
