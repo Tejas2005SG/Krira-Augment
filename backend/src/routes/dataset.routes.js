@@ -7,8 +7,11 @@ import { uploadDataset } from "../controllers/dataset.controller.js";
 
 const router = express.Router();
 
-const projectRoot = path.resolve(process.cwd(), "..");
-const uploadsDir = path.join(projectRoot, "uploads");
+// Use /tmp for Render deployment (ephemeral filesystem)
+// In production on Render, use tmpdir(), in local use ./uploads
+const uploadsDir = process.env.NODE_ENV === 'production'
+  ? path.join('/tmp', 'uploads')
+  : path.join(process.cwd(), 'uploads');
 
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });

@@ -3,8 +3,6 @@ import path from "path";
 
 import { ENV } from "../lib/env.js";
 
-const projectRoot = path.resolve(process.cwd(), "..");
-
 const parseIntOrDefault = (value, fallback) => {
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -80,8 +78,8 @@ const callPython = async (payload) => {
   }
 };
 
-const buildRelativePath = (absolutePath) =>
-  path.relative(projectRoot, absolutePath).replace(/\\/g, "/");
+// Just use the absolute path directly
+const buildRelativePath = (absolutePath) => absolutePath.replace(/\\/g, "/");
 
 const formatError = (label, type, error) => ({
   label,
