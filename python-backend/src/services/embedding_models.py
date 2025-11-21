@@ -15,8 +15,8 @@ logger = get_logger(__name__)
 
 
 OPENAI_MODEL_MAP: dict[EmbeddingModel, str] = {
-    "openai-small": "text-embedding-3-small",
-    "openai-large": "text-embedding-3-large",
+    "openai-small": "openai/text-embedding-3-small",
+    "openai-large": "openai/text-embedding-3-large",
 }
 
 
@@ -50,12 +50,12 @@ class EmbeddingModelService:
     # Provider-specific handlers
     # ---------------------------------------------------------------------
     def _generate_openai(self, model: EmbeddingModel, payload: list[str]) -> List[List[float]]:
-        """Generate embeddings using OpenAI."""
+        """Generate embeddings using OpenAI via FastRouter."""
 
         model_name = OPENAI_MODEL_MAP[model]
-        api_key = self._settings.openai_api_key
+        api_key = self._settings.fastrouter_api_key or self._settings.openai_api_key
         if not api_key:
-            raise EmbeddingServiceError("OpenAI API key is not configured on the server")
+            raise EmbeddingServiceError("FastRouter or OpenAI API key is not configured on the server")
 
         try:
             from openai import OpenAI
@@ -63,7 +63,11 @@ class EmbeddingModelService:
             raise EmbeddingServiceError("openai package is required for OpenAI embeddings") from exc
 
         if self._openai_client is None:
-            self._openai_client = OpenAI(api_key=api_key)
+            # Use FastRouter base URL for OpenAI embeddings
+            self._openai_client = OpenAI(
+                base_url="https://go.fastrouter.ai/v1",
+                api_key=api_key
+            )
 
         client: OpenAI = self._openai_client
 
@@ -71,7 +75,7 @@ class EmbeddingModelService:
         batch_size = 64
         for index in range(0, len(payload), batch_size):
             batch = payload[index : index + batch_size]
-            logger.debug("Requesting OpenAI embeddings", extra={"model": model_name, "batch": len(batch)})
+            logger.debug("Requesting OpenAI embeddings via FastRouter", extra={"model": model_name, "batch": len(batch)})
             response = client.embeddings.create(model=model_name, input=batch)
             embeddings.extend([item.embedding for item in response.data])
 
