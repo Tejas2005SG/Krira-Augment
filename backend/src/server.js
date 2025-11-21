@@ -16,22 +16,7 @@ const PORT = process.env.PORT;
 
 // CORS configuration for cross-origin cookie authentication
 app.use(cors({
-    origin: (origin, callback) => {
-        // Allow requests with no origin (mobile apps, Postman, etc.)
-        if (!origin) return callback(null, true);
-
-        // Allow localhost
-        if (origin && origin.startsWith('http://localhost:')) return callback(null, true);
-
-        // Allow main production URL
-        if (ENV.CLIENT_URL && origin === ENV.CLIENT_URL) return callback(null, true);
-
-        // Allow all Vercel deployments (preview + production)
-        if (origin && origin.endsWith('.vercel.app')) return callback(null, true);
-
-        // Block all other origins
-        callback(new Error('Not allowed by CORS'));
-    },
+    origin: ENV.CLIENT_URL || 'http://localhost:3000',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
