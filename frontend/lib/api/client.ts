@@ -1,4 +1,4 @@
-import { API_CONFIG, HTTP_STATUS } from './config';
+import { API_CONFIG, HTTP_STATUS, API_ENDPOINTS } from './config';
 
 // Custom error class for API errors
 export class ApiError extends Error {
@@ -22,6 +22,8 @@ interface RequestConfig extends RequestInit {
 class ApiClient {
   private baseURL: string;
   private defaultTimeout: number;
+  private isRefreshing = false;
+  private refreshSubscribers: ((success: boolean) => void)[] = [];
 
   constructor(baseURL: string, timeout: number = API_CONFIG.TIMEOUT) {
     this.baseURL = baseURL;
@@ -87,6 +89,15 @@ class ApiClient {
     throw lastError;
   }
 
+  private onRefreshed(success: boolean) {
+    this.refreshSubscribers.forEach(cb => cb(success));
+    this.refreshSubscribers = [];
+  }
+
+  private addRefreshSubscriber(cb: (success: boolean) => void) {
+    this.refreshSubscribers.push(cb);
+  }
+
   // Main request method
   async request<T = any>(
     endpoint: string,
@@ -95,9 +106,9 @@ class ApiClient {
     const url = `${this.baseURL}${endpoint}`;
     const accessToken = this.getAccessToken();
 
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     };
 
     if (accessToken) {
@@ -134,6 +145,50 @@ class ApiClient {
 
       return data;
     } catch (error: any) {
+      // Handle 401 Unauthorized (Token Expired or Missing)
+      if (
+        error instanceof ApiError && 
+        error.status === 401 && 
+        endpoint !== API_ENDPOINTS.AUTH.REFRESH_TOKEN &&
+        endpoint !== API_ENDPOINTS.AUTH.LOGIN &&
+        endpoint !== API_ENDPOINTS.AUTH.LOGOUT
+      ) {
+        if (this.isRefreshing) {
+          return new Promise((resolve, reject) => {
+            this.addRefreshSubscriber((success) => {
+              if (success) {
+                resolve(this.request(endpoint, options));
+              } else {
+                reject(error);
+              }
+            });
+          });
+        }
+
+        this.isRefreshing = true;
+
+        try {
+          // Call refresh endpoint
+          await this.post(API_ENDPOINTS.AUTH.REFRESH_TOKEN);
+          this.isRefreshing = false;
+          this.onRefreshed(true);
+          // Retry original request
+          return this.request(endpoint, options);
+        } catch (refreshError) {
+          this.isRefreshing = false;
+          this.onRefreshed(false);
+          
+          // Dispatch unauthorized event for AuthContext to handle logout
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('auth:unauthorized'));
+          }
+
+          // If refresh fails, user needs to login again.
+          // We throw the original error to let the caller handle logout/redirect
+          throw error;
+        }
+      }
+
       // Handle network errors
       if (error instanceof ApiError) {
         throw error;

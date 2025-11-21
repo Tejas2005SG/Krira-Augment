@@ -74,6 +74,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     initAuth();
+
+    // Listen for unauthorized events from ApiClient (e.g. failed refresh)
+    const handleUnauthorized = () => {
+      console.log('Received auth:unauthorized event, logging out...');
+      logout();
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    };
   }, []);
 
   // Login function
@@ -91,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       authService.clearAuth();
       setUser(null);
-      router.push('/login');
+      router.push('/');
     }
   };
 

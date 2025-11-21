@@ -2,12 +2,12 @@ import jwt from 'jsonwebtoken';
 import { ENV } from '../lib/env.js';
 
 class TokenService {
-  // Generate access token (15 minutes)
+  // Generate access token (1 minute for testing)
   generateAccessToken(userId, role) {
     return jwt.sign(
       { userId, role },
       ENV.ACCESS_KEY_SECRET,
-      { expiresIn: '15m' }
+      { expiresIn: '1m' }
     );
   }
 
@@ -20,22 +20,14 @@ class TokenService {
     );
   }
 
-  // Verify access token
+  // Verify access token - let JWT errors propagate
   verifyAccessToken(token) {
-    try {
-      return jwt.verify(token, ENV.ACCESS_KEY_SECRET);
-    } catch (error) {
-      throw new Error('Invalid or expired access token');
-    }
+    return jwt.verify(token, ENV.ACCESS_KEY_SECRET);
   }
 
-  // Verify refresh token
+  // Verify refresh token - let JWT errors propagate
   verifyRefreshToken(token) {
-    try {
-      return jwt.verify(token, ENV.REFRESH_KEY_SECRET);
-    } catch (error) {
-      throw new Error('Invalid or expired refresh token');
-    }
+    return jwt.verify(token, ENV.REFRESH_KEY_SECRET);
   }
 
   // Generate both tokens
@@ -58,10 +50,10 @@ class TokenService {
       path: '/',
     };
 
-    // Access token cookie (15 minutes)
+    // Access token cookie (1 minute for testing)
     res.cookie('accessToken', accessToken, {
       ...cookieConfig,
-      maxAge: 15 * 60 * 1000, // 15 minutes
+      maxAge: 1 * 60 * 1000, // 1 minute
     });
 
     // Refresh token cookie (7 days)

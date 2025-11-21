@@ -4,7 +4,7 @@ import { redisClient } from '../utils/redis.js';
 import { tokenService } from '../utils/token.js';
 import { googleAuthService } from '../utils/google.js';
 import crypto from 'crypto';
-import {ENV} from '../lib/env.js';
+import { ENV } from '../lib/env.js';
 
 // ==================== SIGNUP ====================
 export const signup = async (req, res) => {
@@ -363,7 +363,7 @@ export const logout = async (req, res) => {
         await User.findByIdAndUpdate(decoded.userId, {
           refreshToken: null,
         });
-        
+
         // Clear cached user
         await redisClient.deleteCachedUser(decoded.userId);
       } catch (error) {
@@ -381,16 +381,127 @@ export const logout = async (req, res) => {
     });
   } catch (error) {
     console.error('Logout error:', error);
-    
+
     // Even if there's an error, clear cookies
     tokenService.clearTokenCookies(res);
-    
+
     res.status(200).json({
       success: true,
       message: 'Logged out successfully.',
     });
   }
 };
+
+// ==================== REFRESH ACCESS TOKEN ====================
+export const refreshAccessToken = async (req, res) => {
+  try {
+    // Get refresh token from cookies or authorization header
+    let refreshToken = req.cookies?.refreshToken;
+
+    if (!refreshToken && req.headers.authorization) {
+      refreshToken = req.headers.authorization.split(' ')[1];
+    }
+
+    // Check if refresh token exists
+    if (!refreshToken) {
+      return res.status(401).json({
+        success: false,
+        message: 'Refresh token not provided.',
+      });
+    }
+
+    // Check if refresh token is blacklisted
+    const isBlacklisted = await redisClient.isTokenBlacklisted(refreshToken);
+    if (isBlacklisted) {
+      return res.status(401).json({
+        success: false,
+        message: 'Session invalidated. Please login again.',
+      });
+    }
+
+    // Verify refresh token
+    let decoded;
+    try {
+      decoded = tokenService.verifyRefreshToken(refreshToken);
+    } catch (error) {
+      // Token is invalid or expired
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid or expired refresh token. Please login again.',
+      });
+    }
+
+    // Find user and include the stored refresh token
+    const user = await User.findById(decoded.userId).select('+refreshToken');
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found. Please login again.',
+      });
+    }
+
+    // Check if user has an active refresh token
+    if (!user.refreshToken) {
+      return res.status(401).json({
+        success: false,
+        message: 'No active session found. Please login again.',
+      });
+    }
+
+    // Compare incoming refresh token with stored refresh token
+    if (user.refreshToken !== refreshToken) {
+      // Token mismatch - possible token theft or old token usage
+      // Blacklist the incoming token
+      const ttl = Math.max(0, decoded.exp - Math.floor(Date.now() / 1000));
+      if (ttl > 0) {
+        await redisClient.blacklistToken(refreshToken, ttl);
+      }
+
+      return res.status(401).json({
+        success: false,
+        message: 'Refresh token does not match active session. Please login again.',
+      });
+    }
+
+    // Generate new tokens
+    const { accessToken, refreshToken: newRefreshToken } = tokenService.generateTokens(
+      user._id.toString(),
+      user.role
+    );
+
+    // Rotate refresh token: blacklist old one
+    const oldTokenTTL = Math.max(0, decoded.exp - Math.floor(Date.now() / 1000));
+    if (oldTokenTTL > 0) {
+      await redisClient.blacklistToken(refreshToken, oldTokenTTL);
+    }
+
+    // Update user with new refresh token
+    user.refreshToken = newRefreshToken;
+    await user.save();
+
+    // Update cookies
+    tokenService.setTokenCookies(res, accessToken, newRefreshToken);
+
+    // Refresh cached user data
+    const userWithoutPassword = await User.findById(user._id);
+    await redisClient.cacheUser(user._id.toString(), userWithoutPassword);
+
+    res.status(200).json({
+      success: true,
+      message: 'Access token refreshed successfully.',
+      accessToken,
+    });
+  } catch (error) {
+    console.error('Refresh token error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error refreshing token. Please login again.',
+      error: error.message,
+    });
+  }
+};
+
 
 // ==================== FORGOT PASSWORD ====================
 export const forgotPassword = async (req, res) => {
@@ -712,7 +823,7 @@ export const profile = async (req, res) => {
         role: user.role,
         authProvider: user.authProvider,
         isVerified: user.isVerified,
-        
+
         // Subscription details
         plan: user.plan,
         planPrice: user.planPrice,
@@ -720,7 +831,7 @@ export const profile = async (req, res) => {
         subscriptionStart: user.subscriptionStart,
         subscriptionEnd: user.subscriptionEnd,
         isActive: user.isActive,
-        
+
         // Usage and limits
         apiKey: user.apiKey,
         apiUsage: user.apiUsage,
@@ -729,18 +840,18 @@ export const profile = async (req, res) => {
         chatbotLimit: user.chatbotLimit,
         chatbotsCreated: user.chatbotsCreated,
         teamMembers: user.teamMembers,
-        
+
         // Features
         supportType: user.supportType,
         watermarkType: user.watermarkType,
         analyticsEnabled: user.analyticsEnabled,
         earlyAccess: user.earlyAccess,
-        
+
         // System
         vectorStoreType: user.vectorStoreType,
         systemPrompt: user.systemPrompt,
         chatbots: user.chatbots,
-        
+
         // Metadata
         lastLogin: user.lastLogin,
         createdAt: user.createdAt,

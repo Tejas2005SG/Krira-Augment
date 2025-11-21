@@ -52,8 +52,8 @@ export const authMiddleware = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    // If access token expired, try to refresh
-    if (error.message.includes('expired')) {
+    // Check if the error is specifically a TokenExpiredError
+    if (error.name === 'TokenExpiredError') {
       return res.status(401).json({
         success: false,
         message: 'Access token expired. Please refresh your token.',
@@ -61,10 +61,10 @@ export const authMiddleware = async (req, res, next) => {
       });
     }
 
+    // For any other error (invalid signature, malformed token, etc.)
     return res.status(401).json({
       success: false,
       message: 'Invalid token.',
-      error: error.message,
     });
   }
 };

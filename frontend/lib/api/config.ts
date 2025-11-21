@@ -18,6 +18,7 @@ export const API_ENDPOINTS = {
     RESET_PASSWORD: (token: string) => `/auth/resetpassword/${token}`,
     LOGIN_WITH_GOOGLE: '/auth/loginwithgoogle',
     SIGNUP_WITH_GOOGLE: '/auth/signupwithgoogle',
+    REFRESH_TOKEN: '/auth/refresh-token',
     PROFILE: '/auth/profile',
     ADMIN_PROFILE: '/auth/admin/profile',
   },

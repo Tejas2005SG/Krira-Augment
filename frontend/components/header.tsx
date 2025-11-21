@@ -5,6 +5,7 @@ import { Menu, X, Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import React from 'react'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/contexts/AuthContext'
 
 const menuItems = [
     { name: 'Features', href: '#features' },
@@ -14,6 +15,7 @@ const menuItems = [
 ]
 
 export const HeroHeader = () => {
+    const { isAuthenticated } = useAuth()
     const [menuState, setMenuState] = React.useState(false)
     const [isScrolled, setIsScrolled] = React.useState(false)
     const [theme, setTheme] = React.useState<'light' | 'dark'>('light')
@@ -130,33 +132,48 @@ export const HeroHeader = () => {
                                     <X className="in-data-[state=active]:rotate-0 in-data-[state=active]:scale-100 in-data-[state=active]:opacity-100 absolute inset-0 m-auto size-6 -rotate-180 scale-0 opacity-0 duration-200" />
                                 </button>
                             </div>
-                            <div className="flex w-full flex-col space-y-3 sm:flex-row sm:gap-3 sm:space-y-0 md:w-fit">
-                                <Button
-                                    asChild
-                                    variant="outline"
-                                    size="sm"
-                                    className={cn(isScrolled && 'lg:hidden')}>
-                                    <Link href="/login">
-                                        <span>Login</span>
-                                    </Link>
-                                </Button>
+                        <div className="flex w-full flex-col space-y-3 sm:flex-row sm:gap-3 sm:space-y-0 md:w-fit">
+                            {isAuthenticated ? (
                                 <Button
                                     asChild
                                     size="sm"
-                                    className={cn(isScrolled && 'lg:hidden')}>
-                                    <Link href="/signup">
-                                        <span>Sign Up</span>
+                                    className="w-full sm:w-auto">
+                                    <Link href="/dashboard">
+                                        <span>Dashboard</span>
                                     </Link>
                                 </Button>
+                            ) : (
+                                <>
+                                    <Button
+                                        asChild
+                                        variant="outline"
+                                        size="sm"
+                                        className={cn(isScrolled && 'lg:hidden')}>
+                                        <Link href="/login">
+                                            <span>Login</span>
+                                        </Link>
+                                    </Button>
+                                    <Button
+                                        asChild
+                                        size="sm"
+                                        className={cn(isScrolled && 'lg:hidden')}>
+                                        <Link href="/signup">
+                                            <span>Sign Up</span>
+                                        </Link>
+                                    </Button>
+                                </>
+                            )}
+                            {!isAuthenticated && (
                                 <Button
                                     asChild
                                     size="sm"
                                     className={cn(isScrolled ? 'lg:inline-flex' : 'hidden')}>
-                                    <Link href="#">
+                                    <Link href="/signup">
                                         <span>Get Started</span>
                                     </Link>
                                 </Button>
-                            </div>
+                            )}
+                        </div>
                         </div>
                     </div>
                 </div>
