@@ -20,6 +20,14 @@ const apiKeySchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    botNameSnapshot: {
+      type: String,
+      trim: true,
+    },
+    botSlugSnapshot: {
+      type: String,
+      trim: true,
+    },
     keyHash: {
       type: String,
       required: true,

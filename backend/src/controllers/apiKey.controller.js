@@ -5,6 +5,14 @@ import { Chatbot } from "../models/chatbot.model.js";
 
 const ALLOWED_PERMISSIONS = new Set(["chat", "manage"]);
 
+const slugify = (value = "") =>
+  value
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
 const hashApiKey = (apiKey) => crypto.createHash("sha256").update(apiKey).digest("hex");
 
 const generateRawKey = () => `sk-live-${crypto.randomBytes(28).toString("hex")}`;
@@ -52,6 +60,7 @@ const serializeKey = (keyDoc, bot) => ({
     ? {
         id: bot._id.toString(),
         name: bot.name,
+        slug: slugify(bot.name),
       }
     : undefined,
 });
@@ -105,6 +114,8 @@ export const createApiKey = async (req, res) => {
       name: String(name).trim(),
       userId: req.user._id,
       botId,
+      botNameSnapshot: bot.name,
+      botSlugSnapshot: slugify(bot.name),
       keyHash,
       prefix,
       suffix,
@@ -173,6 +184,7 @@ export const verifyApiKey = async (req, res) => {
       return res.status(400).json({ message: "apiKey and botId are required" });
     }
 
+    const botIdentifier = String(botId).trim();
     const keyHash = hashApiKey(apiKey);
     const key = await ApiKey.findOne({ keyHash }).populate({ path: "botId", select: "name dataset embedding llm" });
 
@@ -180,7 +192,23 @@ export const verifyApiKey = async (req, res) => {
       return res.status(401).json({ message: "Invalid API key" });
     }
 
-    if (key.botId?._id?.toString() !== String(botId)) {
+    const normalizedInput = botIdentifier.toLowerCase();
+    const inputSlug = slugify(botIdentifier);
+
+    const candidateValues = [
+      key.botId?._id?.toString(),
+      key.botId?.name,
+      key.botNameSnapshot,
+      key.botSlugSnapshot,
+      slugify(key.botId?.name || ""),
+      slugify(key.botNameSnapshot || ""),
+    ]
+      .filter(Boolean)
+      .map((value) => value.toString().trim().toLowerCase());
+
+    const matchesIdentifier = candidateValues.includes(normalizedInput) || (inputSlug && candidateValues.includes(inputSlug));
+
+    if (!matchesIdentifier) {
       return res.status(403).json({ message: "API key is not authorized for this bot" });
     }
 

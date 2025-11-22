@@ -183,14 +183,18 @@ export function ApiKeysTab() {
     setRateLimit("60")
   }
 
-  const fallbackBotId = selectedBot || keys[0]?.bot?.id || "bot_pro_123"
+  const fallbackBotName =
+    chatbots.find((bot) => bot._id === selectedBot)?.name ||
+    keys[0]?.bot?.name ||
+    "your-bot-name"
   const snippetKey = generatedKey ?? "sk-live-your-key"
+  const snippetBotIdentifier = fallbackBotName.replace(/"/g, '\\"')
   const curlSnippet = `curl -X POST ${PUBLIC_API_URL}/chat \
   -H "Authorization: Bearer ${snippetKey}" \
   -H "Content-Type: application/json" \
-  -d '{"bot_id": "${fallbackBotId}", "query": "What is the status of my order?"}'`
+  -d '{"bot_id": "${snippetBotIdentifier}", "query": "What is the status of my order?"}'`
 
-  const pythonSnippet = `from kriralabs import Kriralabs\n\nclient = Kriralabs(api_key="${snippetKey}", bot_id="${fallbackBotId}")\nresponse = client.ask("What is the status of my order?")\nprint(response.answer)`
+  const pythonSnippet = `from kriralabs import Kriralabs\n\nclient = Kriralabs(api_key="${snippetKey}", bot_id="${snippetBotIdentifier}")\nresponse = client.ask("What is the status of my order?")\nprint(response.answer)`
 
   return (
     <div className="space-y-6">
@@ -284,7 +288,8 @@ export function ApiKeysTab() {
           <CodeSnippet label="Python SDK" code={pythonSnippet} />
           <p className="text-sm text-muted-foreground">
             Install the SDK with <code className="rounded bg-muted px-1">pip install kriralabs</code>. Each request must include the
-            <code className="rounded bg-muted px-1">Authorization: Bearer &lt;api_key&gt;</code> header.
+            <code className="rounded bg-muted px-1">Authorization: Bearer &lt;api_key&gt;</code> header and you can set
+            <code className="rounded bg-muted px-1">bot_id</code> to either the chatbot&apos;s ID or its exact name (e.g., &quot;{fallbackBotName}&quot;).
           </p>
         </CardContent>
       </Card>
