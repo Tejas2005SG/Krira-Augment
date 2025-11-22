@@ -2,6 +2,7 @@ import crypto from "crypto";
 
 import { ApiKey } from "../models/apiKey.model.js";
 import { Chatbot } from "../models/chatbot.model.js";
+import { decryptApiKey } from "../lib/crypto.js";
 
 const ALLOWED_PERMISSIONS = new Set(["chat", "manage"]);
 
@@ -227,15 +228,23 @@ export const verifyApiKey = async (req, res) => {
     key.usageCount += 1;
     await key.save();
 
+    const botPayload = key.botId?.toObject ? key.botId.toObject() : key.botId;
+    if (botPayload?.embedding?.pineconeConfig?.apiKey) {
+      const decrypted = decryptApiKey(botPayload.embedding.pineconeConfig.apiKey);
+      if (decrypted) {
+        botPayload.embedding.pineconeConfig.apiKey = decrypted;
+      }
+    }
+
     return res.json({
       valid: true,
       permissions: key.permissions,
       bot: {
         id: key.botId._id.toString(),
         name: key.botId.name,
-        dataset: key.botId.dataset,
-        embedding: key.botId.embedding,
-        llm: key.botId.llm,
+        dataset: botPayload?.dataset,
+        embedding: botPayload?.embedding,
+        llm: botPayload?.llm,
       },
       rateLimitPerMinute: key.rateLimitPerMinute,
     });
