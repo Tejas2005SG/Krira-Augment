@@ -7,7 +7,7 @@ export interface Chatbot {
   name: string;
   dataset?: {
     type: string;
-    files?: Array<{ name: string; size: number; chunks: number }>;
+    files?: Array<{ datasetId?: string; name: string; size: number; chunks: number }>;
     urls?: string[];
   };
   embedding?: {
@@ -22,6 +22,13 @@ export interface Chatbot {
     };
     dimension?: number;
     isEmbedded: boolean;
+    datasetIds?: string[];
+    datasets?: Array<{
+      id?: string;
+      label?: string;
+      chunksEmbedded?: number;
+      chunksProcessed?: number;
+    }>;
   };
   llm?: {
     provider: string;

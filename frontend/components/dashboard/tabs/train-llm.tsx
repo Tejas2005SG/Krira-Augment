@@ -193,7 +193,7 @@ export function TrainLLMTab() {
           // Create preview results from saved files
           if (chatbot.dataset.files && chatbot.dataset.files.length > 0) {
             const filePreviewResults: PreviewDatasetResult[] = chatbot.dataset.files.map((file, idx) => ({
-              id: `saved-file-${idx}`,
+              id: file.datasetId || `saved-file-${idx}`,
               label: file.name,
               source: chatbot.dataset!.type as DatasetType,
               status: "success" as const,
@@ -238,16 +238,31 @@ export function TrainLLMTab() {
             setIndexName(chatbot.embedding.pineconeConfig.indexName)
           }
           if (chatbot.embedding.isEmbedded) {
+            const persistedDatasets = chatbot.embedding.datasets ?? []
+            const datasetSummaries = persistedDatasets.length > 0
+              ? persistedDatasets.map((dataset, idx) => ({
+                  dataset_id: dataset.id || `dataset-${idx}`,
+                  label: dataset.label || `Dataset ${idx + 1}`,
+                  chunks_processed: dataset.chunksProcessed ?? dataset.chunksEmbedded ?? 0,
+                  chunks_embedded: dataset.chunksEmbedded ?? dataset.chunksProcessed ?? 0,
+                }))
+              : chatbot.dataset?.files?.map((f, idx) => ({
+                  dataset_id: f.datasetId || `file-${idx}`,
+                  label: f.name,
+                  chunks_processed: f.chunks || 0,
+                  chunks_embedded: f.chunks || 0,
+                })) || []
+
             setEmbeddingSummary({
-              results: chatbot.dataset?.files?.map((f, idx) => ({
-                dataset_id: `file-${idx}`,
-                label: f.name,
+              results: datasetSummaries.map((summary) => ({
+                dataset_id: summary.dataset_id,
+                label: summary.label,
                 vector_store: chatbot.embedding!.vectorStore as VectorStoreOption,
                 embedding_model: chatbot.embedding!.model as EmbeddingModelId,
-                chunks_processed: f.chunks || 0,
-                chunks_embedded: f.chunks || 0,
-              })) || [],
-              errors: []
+                chunks_processed: summary.chunks_processed,
+                chunks_embedded: summary.chunks_embedded,
+              })),
+              errors: [],
             })
           }
         }
@@ -1229,6 +1244,7 @@ export function TrainLLMTab() {
         .map(p => {
           const matchingFile = currentFileUploads.find(fu => fu.id === p.id);
           return {
+            datasetId: p.id,
             name: p.label,
             size: matchingFile ? matchingFile.file.size : 0,
             chunks: p.data?.total_chunks || 0,
@@ -1272,6 +1288,14 @@ export function TrainLLMTab() {
             chunksProcessed: embeddingSummary?.results.reduce((acc, r) => acc + r.chunks_processed, 0) || 0,
             chunksEmbedded: embeddingSummary?.results.reduce((acc, r) => acc + r.chunks_embedded, 0) || 0
           },
+          datasetIds: embeddingSummary?.results.map((result) => result.dataset_id) || [],
+          datasets:
+            embeddingSummary?.results.map((result) => ({
+              id: result.dataset_id,
+              label: result.label,
+              chunksEmbedded: result.chunks_embedded,
+              chunksProcessed: result.chunks_processed,
+            })) || [],
           isEmbedded: true
         }
       }

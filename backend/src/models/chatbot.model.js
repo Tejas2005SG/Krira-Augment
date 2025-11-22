@@ -20,6 +20,7 @@ const chatbotSchema = new mongoose.Schema(
             },
             files: [
                 {
+                    datasetId: String,
                     name: String,
                     size: Number,
                     chunks: Number,
@@ -47,6 +48,15 @@ const chatbotSchema = new mongoose.Schema(
                 type: Boolean,
                 default: false,
             },
+            datasetIds: [String],
+            datasets: [
+                {
+                    id: String,
+                    label: String,
+                    chunksEmbedded: Number,
+                    chunksProcessed: Number,
+                },
+            ],
         },
         // Step 3: Choose LLM
         llm: {
