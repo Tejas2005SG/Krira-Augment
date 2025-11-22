@@ -1,0 +1,49 @@
+﻿================================================================================
+Testing Deployed Endpoints
+================================================================================
+
+1. Testing Python backend health...
+   Status: 200
+python : Traceback (most recent call last):
+At line:1 char:1
++ python test_deployed.py 2>&1 | Out-File -FilePath 
+test_output.txt -En ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback 
+    (most recent call last)::String) [], RemoteExcept  
+  ion
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File 
+"C:\Users\Tejas\Desktop\kriraai\test_deployed.py", 
+line 27, in <module>
+    print(f"   \u2713 Response: {response.json()}")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Tejas\AppData\Local\Programs\Python\Py
+thon313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,enco
+ding_table)[0]
+           
+~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode 
+character '\u2713' in position 3: character maps to 
+<undefined>
+
+During handling of the above exception, another 
+exception occurred:
+
+Traceback (most recent call last):
+  File 
+"C:\Users\Tejas\Desktop\kriraai\test_deployed.py", 
+line 31, in <module>
+    print(f"   \u274c Error: {e}")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Tejas\AppData\Local\Programs\Python\Py
+thon313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,enco
+ding_table)[0]
+           
+~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode 
+character '\u274c' in position 3: character maps to 
+<undefined>
