@@ -15,9 +15,20 @@ import apiKeyRoutes from "./routes/apiKey.routes.js";
 const app = express();
 const PORT = process.env.PORT;
 
+const allowedOrigins = (ENV.ALLOWED_ORIGINS || ENV.CLIENT_URL || 'http://localhost:3000')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 // CORS configuration for cross-origin cookie authentication
 app.use(cors({
-    origin: ENV.CLIENT_URL || 'http://localhost:3000',
+    origin(origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        console.warn(`Blocked CORS origin: ${origin}`);
+        return callback(null, false);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

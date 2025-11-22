@@ -18,6 +18,7 @@ export const ENV = {
     STRIPE_PUBLIC_KEY: process.env.STRIPE_PUBLIC_KEY,
     STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
     CLIENT_URL: process.env.CLIENT_URL,
+    ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     PINECONE_API_KEY: process.env.PINECONE_API_KEY,
     FASTROUTER_API_KEY: process.env.FASTROUTER_API_KEY,

@@ -2,12 +2,12 @@ import jwt from 'jsonwebtoken';
 import { ENV } from '../lib/env.js';
 
 class TokenService {
-  // Generate access token (1 minute for testing)
+  // Generate access token (15 minutes)
   generateAccessToken(userId, role) {
     return jwt.sign(
       { userId, role },
       ENV.ACCESS_KEY_SECRET,
-      { expiresIn: '1m' }
+      { expiresIn: '15m' }
     );
   }
 
@@ -50,10 +50,10 @@ class TokenService {
       path: '/',
     };
 
-    // Access token cookie (1 minute for testing)
+    // Access token cookie (15 minutes)
     res.cookie('accessToken', accessToken, {
       ...cookieConfig,
-      maxAge: 1 * 60 * 1000, // 1 minute
+      maxAge: 15 * 60 * 1000, // 15 minutes
     });
 
     // Refresh token cookie (7 days)
