@@ -1,4 +1,4 @@
-import MODEL_ACCESS from "../../../frontend/lib/model-access.json" assert { type: "json" };
+import MODEL_ACCESS from "../../../frontend/lib/model-access.json" with { type: "json" };
 
 const NORMALIZED_MODEL_ACCESS = Object.entries(MODEL_ACCESS).reduce((acc, [provider, details]) => {
   const free = Array.isArray(details.freeModels) ? details.freeModels.map((id) => id.toLowerCase()) : [];
