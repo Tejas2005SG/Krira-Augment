@@ -313,7 +313,7 @@ function DashboardHeader({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="flex h-10 items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-muted data-[state=open]:bg-muted"
+                className="flex h-10 items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:text-primary hover:bg-muted data-[state=open]:bg-muted"
               >
                 <Avatar className="h-8 w-8">
                   <AvatarImage src="/images/avatar.png" alt={`${displayName} avatar`} />

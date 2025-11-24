@@ -13,6 +13,7 @@ const COLORS = ["#4f46e5", "#06b6d4", "#1e1b4b"];
 function Particles({ logoUrl }: { logoUrl: string }) {
   const [logoPoints, setLogoPoints] = useState<Float32Array | null>(null);
   const pointsRef = useRef<THREE.Points>(null);
+  const positionArray = useMemo(() => new Float32Array(PARTICLE_COUNT * 3), []);
   
   // Load Logo and Sample Points
   useEffect(() => {
@@ -112,15 +113,11 @@ function Particles({ logoUrl }: { logoUrl: string }) {
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
-          count={PARTICLE_COUNT}
-          array={new Float32Array(PARTICLE_COUNT * 3)}
-          itemSize={3}
+          args={[positionArray, 3]}
         />
         <bufferAttribute
           attach="attributes-color"
-          count={PARTICLE_COUNT}
-          array={colors}
-          itemSize={3}
+          args={[colors, 3]}
         />
       </bufferGeometry>
       <pointsMaterial

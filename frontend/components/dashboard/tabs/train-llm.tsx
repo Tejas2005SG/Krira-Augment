@@ -6,7 +6,7 @@ import { useDropzone } from "react-dropzone"
 import { Loader2 } from "lucide-react"
 
 import { apiClient, ApiError } from "@/lib/api/client"
-import { chatbotService, type UpdateChatbotData } from "@/lib/api/chatbot.service"
+import { chatbotService, type UpdateChatbotData, type Chatbot } from "@/lib/api/chatbot.service"
 import { useAuth } from "@/contexts/AuthContext"
 import { resolvePlanAccess } from "@/lib/plan-access"
 import { Button } from "@/components/ui/button"
@@ -49,8 +49,6 @@ import {
   FILE_DATASET_TYPES,
 } from "./TrainLLM/constants"
 
-const FINAL_STEP_INDEX = STEPS.length - 1
-
 import { Stepper } from "./TrainLLM/Stepper"
 import { CreateChatbotStep } from "./TrainLLM/CreateChatbotStep"
 import { DatasetUploader } from "./TrainLLM/DatasetUploader"
@@ -60,6 +58,22 @@ import { LLMConfiguration } from "./TrainLLM/LLMConfiguration"
 import { EvaluationSection } from "./TrainLLM/EvaluationSection"
 import { DeploymentSection } from "./TrainLLM/DeploymentSection"
 import { DetailDialog } from "./TrainLLM/DetailDialog"
+
+const FINAL_STEP_INDEX = STEPS.length - 1
+
+const getApiErrorDetail = (error: ApiError): string | undefined => {
+  if (typeof error.data === "object" && error.data !== null) {
+    const detail = (error.data as { detail?: unknown }).detail
+    if (typeof detail === "string") {
+      return detail
+    }
+    const message = (error.data as { message?: unknown }).message
+    if (typeof message === "string") {
+      return message
+    }
+  }
+  return undefined
+}
 
 export function TrainLLMTab() {
   const { user, updateUser } = useAuth()
@@ -403,7 +417,9 @@ export function TrainLLMTab() {
       
       // Check if we got a full chatbot object with existing state (Resume Flow)
       // A new chatbot has empty dataset/embedding/llm usually, or we can check createdAt vs now
-      const isResumed = response.dataset?.files?.length > 0 || response.embedding?.isEmbedded || response.llm?.model
+      const datasetFileCount = response.dataset?.files?.length ?? 0
+      const hasDatasetFiles = datasetFileCount > 0
+      const isResumed = hasDatasetFiles || response.embedding?.isEmbedded || response.llm?.model
       
       if (isResumed || response.status === "active" || response._id) {
         // If the backend returned a bot that looks 'used', or simply if we have an ID
@@ -411,7 +427,7 @@ export function TrainLLMTab() {
         
         // Let's assume if it has an ID, we use it.
         // But specifically for the "Resume" Toast:
-        if (response.dataset?.files?.length > 0 || response.embedding?.isEmbedded) {
+        if (hasDatasetFiles || response.embedding?.isEmbedded) {
              toast({ title: "Pipeline Resumed", description: `Loaded existing progress for "${response.name}"` })
              restoreChatbotState(response) // Auto-calculate step
         } else {
@@ -488,11 +504,11 @@ export function TrainLLMTab() {
 
       const currentCount = user?.chatbotsCreated ?? 0;
       const existingChatbots = Array.isArray(user?.chatbots) ? user.chatbots : [];
-      const mergedIds = Array.from(new Set([...existingChatbots, response._id]));
+      const mergedChatbots = [...existingChatbots.filter((bot) => bot._id !== response._id), response];
 
       updateUser?.({
         chatbotsCreated: currentCount + 1,
-        chatbots: mergedIds,
+        chatbots: mergedChatbots,
       });
 
       toast({
@@ -557,7 +573,7 @@ export function TrainLLMTab() {
   const handleDownloadSampleCsv = React.useCallback(async () => {
     setIsSampleDownloading(true)
     try {
-      const blob = await apiClient.get(
+      const blob = await apiClient.get<Blob>(
         `/llm/eval/sample`,
         { responseType: "blob" }
       )
@@ -652,17 +668,22 @@ export function TrainLLMTab() {
       
       // Save evaluation results to MongoDB
       if (chatbotId) {
+        const evaluationPayload: NonNullable<UpdateChatbotData["evaluation"]> = {
+          file: {
+            name: evaluationCsv.name,
+            size: evaluationCsv.size,
+            path: evaluationCsv.name
+          },
+          rows: Array.isArray(data.rows) ? data.rows : [],
+          justifications: data.justifications ?? {}
+        }
+
+        if (data.metrics) {
+          evaluationPayload.metrics = data.metrics
+        }
+
         await updateChatbotState({
-          evaluation: {
-            file: {
-              name: evaluationCsv.name,
-              size: evaluationCsv.size,
-              path: evaluationCsv.name
-            },
-            metrics: data.metrics ?? null,
-            rows: Array.isArray(data.rows) ? data.rows : [],
-            justifications: data.justifications ?? {}
-          }
+          evaluation: evaluationPayload
         })
       }
       
@@ -823,8 +844,10 @@ export function TrainLLMTab() {
         setPreviewError(null)
       }
     } catch (error) {
+      const detailMessage = error instanceof ApiError ? getApiErrorDetail(error) : undefined
+
       const message = error instanceof ApiError
-        ? (error.data?.detail ?? error.message)
+        ? detailMessage ?? error.message
         : error instanceof Error
           ? error.message
           : "Unable to process datasets"
@@ -1171,8 +1194,10 @@ export function TrainLLMTab() {
         setConnectionStatus("success")
       }
     } catch (error) {
+      const detailMessage = error instanceof ApiError ? getApiErrorDetail(error) : undefined
+
       const message = error instanceof ApiError
-        ? (error.data?.detail ?? error.message)
+        ? detailMessage ?? error.message
         : error instanceof Error
           ? error.message
           : "Embedding failed"
@@ -1344,15 +1369,27 @@ export function TrainLLMTab() {
     } catch (error) {
       let message = "Unable to execute LLM test"
       if (error instanceof ApiError) {
-        const detail = (error.data as { detail?: unknown } | undefined)?.detail ?? error.data
-        if (Array.isArray(detail)) {
-          message = detail
+        const detailSource = (() => {
+          if (typeof error.data === "object" && error.data !== null) {
+            if (Array.isArray(error.data)) {
+              return error.data
+            }
+            if ("detail" in error.data) {
+              return (error.data as { detail?: unknown }).detail ?? error.data
+            }
+            return error.data
+          }
+          return getApiErrorDetail(error)
+        })()
+
+        if (Array.isArray(detailSource)) {
+          message = detailSource
             .map((item) => (typeof item === "string" ? item : JSON.stringify(item)))
             .join("; ")
-        } else if (detail && typeof detail === "object") {
-          message = JSON.stringify(detail)
-        } else if (typeof detail === "string") {
-          message = detail
+        } else if (detailSource && typeof detailSource === "object") {
+          message = JSON.stringify(detailSource)
+        } else if (typeof detailSource === "string") {
+          message = detailSource
         } else {
           message = error.message ?? message
         }
@@ -1492,17 +1529,20 @@ export function TrainLLMTab() {
     if (activeStep === 4) {
       // Test & Evaluate Step
       if (evaluationCsv) {
-        const evalState = {
+        const evalState: UpdateChatbotData = {
           evaluation: {
             file: {
               name: evaluationCsv.name,
               size: evaluationCsv.size,
               path: evaluationCsv.name,
             },
-            metrics: evaluationMetrics,
             rows: evaluationRows,
             justifications: evaluationJustifications,
           },
+        }
+
+        if (evaluationMetrics) {
+          evalState.evaluation!.metrics = evaluationMetrics
         }
         await updateChatbotState(evalState)
       }

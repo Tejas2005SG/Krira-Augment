@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { authService } from "@/lib/api/auth.service"
 import Link from "next/link"
 import { Loader2 } from "lucide-react"
+import { useState } from "react"
 
 export default function ForgotPassword() {
     const { toast } = useToast()

@@ -79,6 +79,10 @@ export interface ProfileResponse {
     vectorStoreType: string;
     systemPrompt: string;
     chatbots: Chatbot[];
+    storageLimitMb?: number;
+    storageUsedMb?: number;
+    stripeCustomerId?: string;
+    stripeSubscriptionId?: string;
     lastLogin: string;
     createdAt: string;
     updatedAt: string;

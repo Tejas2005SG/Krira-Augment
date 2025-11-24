@@ -9,7 +9,6 @@ import {
   Loader2,
   LogOut,
   MessageSquare,
-  Sparkles,
 } from "lucide-react";
 
 import {
@@ -115,25 +114,29 @@ export function AppSidebar({
           <div className="flex items-center justify-between p-2">
             {open ? (
               <div className="flex items-center gap-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-50 shadow-md">
+                <div className="flex h-10 w-10 items-center justify-center ">
                   <Image
-                    src="/logo2.png"
+                    src="/krira-augment-logo.png"
                     alt="User Avatar"
                     width={60}
                     height={60}
-                    
                   />
                 </div>
                 <div>
                   <p className="text-sm font-semibold leading-tight text-sidebar-foreground">
-                    Krira AI
+                    Krira Augment
                   </p>
-                  <p className="text-xs text-muted-foreground">AI Dashboard</p>
+                  <p className="text-xs text-muted-foreground">Augment Dashboard</p>
                 </div>
               </div>
             ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/80 shadow-md mx-auto">
-                <Sparkles className="h-5 w-5 text-primary-foreground" />
+              <div className="flex h-10 w-10 items-center justify-center  mx-auto">
+                <Image
+                    src="/krira-augment-logo.png"
+                    alt="User Avatar"
+                    width={60}
+                    height={60}
+                  />
               </div>
             )}
           </div>
@@ -158,18 +161,15 @@ export function AppSidebar({
                       isActive={isActive}
                       onClick={() => onSelect(item.value)}
                       tooltip={item.label}
-                      className={`relative transition-all duration-200 ${
-                        !open ? "h-12 w-12 p-0 justify-center mx-auto" : "px-3"
-                      } ${
-                        isActive
+                      className={`relative transition-all duration-200 ${!open ? "h-12 w-12 p-0 justify-center mx-auto" : "px-3"
+                        } ${isActive
                           ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
                           : "hover:bg-sidebar-accent/50 text-sidebar-foreground"
-                      }`}
+                        }`}
                     >
                       <Icon
-                        className={`h-5 w-5 ${
-                          isActive ? "text-sidebar-primary" : ""
-                        } ${!open ? "shrink-0" : "h-4 w-4"}`}
+                        className={`h-5 w-5 ${isActive ? "text-sidebar-primary" : ""
+                          } ${!open ? "shrink-0" : "h-4 w-4"}`}
                       />
                       {open && (
                         <span className="flex-1 ml-2">{item.label}</span>
