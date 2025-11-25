@@ -198,6 +198,14 @@ class AuthService {
   }
 
   /**
+   * Refresh access token using refresh token cookie
+   * This is called proactively before token expiry to maintain session
+   */
+  async refreshToken(): Promise<AuthResponse> {
+    return apiClient.post<AuthResponse>(API_ENDPOINTS.AUTH.REFRESH_TOKEN);
+  }
+
+  /**
    * Check if user is authenticated
    * Note: Since cookies are httpOnly, we can't read them in JavaScript
    * We need to make an API call to verify authentication
