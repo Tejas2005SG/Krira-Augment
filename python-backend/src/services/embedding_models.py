@@ -62,12 +62,17 @@ class EmbeddingModelService:
 
         if model in OPENAI_MODEL_ALIASES:
             return await asyncio.to_thread(self._generate_openai, model, payload, dimensions)
+        # NOTE: HuggingFace local embeddings disabled due to memory constraints on Render free tier
+        # if model == "huggingface":
+        #     if dimensions is not None and dimensions != HUGGINGFACE_DIMENSION:
+        #         raise EmbeddingServiceError(
+        #             f"Hugging Face embeddings use a fixed dimension of {HUGGINGFACE_DIMENSION}"
+        #         )
+        #     return await asyncio.to_thread(self._generate_huggingface, payload)
         if model == "huggingface":
-            if dimensions is not None and dimensions != HUGGINGFACE_DIMENSION:
-                raise EmbeddingServiceError(
-                    f"Hugging Face embeddings use a fixed dimension of {HUGGINGFACE_DIMENSION}"
-                )
-            return await asyncio.to_thread(self._generate_huggingface, payload)
+            raise EmbeddingServiceError(
+                "HuggingFace local embeddings are currently disabled. Please use OpenAI embeddings instead."
+            )
         raise EmbeddingServiceError(f"Unsupported embedding model '{model}'")
 
     # ---------------------------------------------------------------------
@@ -114,35 +119,36 @@ class EmbeddingModelService:
 
         return embeddings
 
-    def _generate_huggingface(self, payload: list[str]) -> List[List[float]]:
-        """Generate embeddings using HuggingFace SentenceTransformers."""
-
-        try:
-            from sentence_transformers import SentenceTransformer
-        except ImportError as exc:  # pragma: no cover - import-time failure
-            raise EmbeddingServiceError(
-                "sentence-transformers package is required for Hugging Face embeddings"
-            ) from exc
-
-        with self._hf_lock:
-            if self._hf_model is None:
-                logger.debug("Loading Hugging Face embedding model", extra={"model": "all-MiniLM-L6-v2"})
-                self._hf_model = SentenceTransformer(
-                    "sentence-transformers/all-MiniLM-L6-v2",
-                    device="cpu",
-                )
-            model: SentenceTransformer = self._hf_model
-
-        vectors = model.encode(
-            payload,
-            batch_size=32,
-            convert_to_numpy=True,
-            normalize_embeddings=True,
-            show_progress_bar=False,
-        )
-        if hasattr(vectors, "tolist"):
-            return vectors.tolist()
-        return [vector.tolist() if hasattr(vector, "tolist") else list(vector) for vector in vectors]
+    # NOTE: HuggingFace local embeddings disabled due to memory constraints on Render free tier
+    # def _generate_huggingface(self, payload: list[str]) -> List[List[float]]:
+    #     """Generate embeddings using HuggingFace SentenceTransformers."""
+    #
+    #     try:
+    #         from sentence_transformers import SentenceTransformer
+    #     except ImportError as exc:  # pragma: no cover - import-time failure
+    #         raise EmbeddingServiceError(
+    #             "sentence-transformers package is required for Hugging Face embeddings"
+    #         ) from exc
+    #
+    #     with self._hf_lock:
+    #         if self._hf_model is None:
+    #             logger.debug("Loading Hugging Face embedding model", extra={"model": "all-MiniLM-L6-v2"})
+    #             self._hf_model = SentenceTransformer(
+    #                 "sentence-transformers/all-MiniLM-L6-v2",
+    #                 device="cpu",
+    #             )
+    #         model: SentenceTransformer = self._hf_model
+    #
+    #     vectors = model.encode(
+    #         payload,
+    #         batch_size=32,
+    #         convert_to_numpy=True,
+    #         normalize_embeddings=True,
+    #         show_progress_bar=False,
+    #     )
+    #     if hasattr(vectors, "tolist"):
+    #         return vectors.tolist()
+    #     return [vector.tolist() if hasattr(vector, "tolist") else list(vector) for vector in vectors]
 
     def _resolve_openai_model_name(self, model: EmbeddingModel) -> str:
         canonical = OPENAI_MODEL_ALIASES.get(model)

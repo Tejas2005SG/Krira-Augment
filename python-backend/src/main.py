@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -15,29 +13,12 @@ settings = get_settings()
 logger = get_logger(__name__)
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Preload heavy models at startup to avoid request timeouts on cold starts."""
-    logger.info("Starting up - preloading models...")
-    try:
-        from sentence_transformers import SentenceTransformer
-        SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", device="cpu")
-        logger.info("HuggingFace embedding model preloaded successfully")
-    except Exception as e:
-        logger.warning(f"Model preload failed (will load on first request): {e}")
-    
-    yield
-    
-    logger.info("Shutting down...")
-
-
 def create_app() -> FastAPI:
     """Instantiate and configure the FastAPI application."""
 
     application = FastAPI(
         title="Krira AI RAG Backend",
         version="1.0.0",
-        lifespan=lifespan,
     )
     application.add_middleware(
         CORSMiddleware,
