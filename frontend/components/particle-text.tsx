@@ -13,7 +13,6 @@ const COLORS = ["#4f46e5", "#06b6d4", "#1e1b4b"];
 function Particles({ logoUrl }: { logoUrl: string }) {
   const [logoPoints, setLogoPoints] = useState<Float32Array | null>(null);
   const pointsRef = useRef<THREE.Points>(null);
-  const positionArray = useMemo(() => new Float32Array(PARTICLE_COUNT * 3), []);
   
   // Load Logo and Sample Points
   useEffect(() => {
@@ -22,7 +21,7 @@ function Particles({ logoUrl }: { logoUrl: string }) {
     img.crossOrigin = "Anonymous";
     img.onload = () => {
       const canvas = document.createElement("canvas");
-      const width = 400; // Higher res for better sampling
+      const width = 400;
       const scaleFactor = width / img.width;
       const height = Math.floor(img.height * scaleFactor);
       
@@ -48,11 +47,11 @@ function Particles({ logoUrl }: { logoUrl: string }) {
         const x = (pixelIndex % width) - width / 2;
         const y = -(Math.floor(pixelIndex / width) - height / 2);
         
-        const worldScale = 12 / width; // Keep the size as requested
+        const worldScale = 12 / width;
         
         points[i * 3] = x * worldScale;
         points[i * 3 + 1] = y * worldScale;
-        points[i * 3 + 2] = (Math.random() - 0.5) * 0.2; // Flatter logo
+        points[i * 3 + 2] = (Math.random() - 0.5) * 0.2;
       }
       
       setLogoPoints(points);
@@ -76,36 +75,13 @@ function Particles({ logoUrl }: { logoUrl: string }) {
     return c;
   }, []);
 
-  // Animation Loop
+  // Animation Loop - only gentle rotation
   useFrame((state, delta) => {
-    if (!pointsRef.current || !logoPoints) return;
-
-    const currentPositions = pointsRef.current.geometry.attributes.position.array as Float32Array;
-
-    // Smoothly damp towards the full-size logo positions
-    // This creates the "small to big" expansion effect on mount
-    for (let i = 0; i < PARTICLE_COUNT * 3; i++) {
-      currentPositions[i] = THREE.MathUtils.damp(currentPositions[i], logoPoints[i], 2.0, delta);
-    }
-
-    pointsRef.current.geometry.attributes.position.needsUpdate = true;
-    
-    // Gentle rotation
+    if (!pointsRef.current) return;
     pointsRef.current.rotation.y += delta * 0.05;
   });
 
-  // Initial Position Set (Start Small)
-  useEffect(() => {
-    if (pointsRef.current && logoPoints) {
-       const positions = pointsRef.current.geometry.attributes.position.array as Float32Array;
-       for(let i=0; i<logoPoints.length; i++) {
-         // Initialize at 10% scale to create the "grow" effect
-         positions[i] = logoPoints[i] * 0.1;
-       }
-       pointsRef.current.geometry.attributes.position.needsUpdate = true;
-    }
-  }, [logoPoints]);
-
+  // Don't render until logo points are ready
   if (!logoPoints) return null;
 
   return (
@@ -113,7 +89,7 @@ function Particles({ logoUrl }: { logoUrl: string }) {
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
-          args={[positionArray, 3]}
+          args={[logoPoints, 3]}
         />
         <bufferAttribute
           attach="attributes-color"

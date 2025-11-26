@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from "@/contexts/AuthContext"
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { ThemeProvider } from "@/components/theme-provider"
+import { LenisProvider } from "@/components/lenis-provider"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -34,7 +35,7 @@ export default function RootLayout({
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} ${montserrat.variable} antialiased`}>
         <ThemeProvider
           attribute="class"
@@ -42,12 +43,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <GoogleOAuthProvider clientId={googleClientId}>
-            <AuthProvider>
-              {children}
-              <Toaster />
-            </AuthProvider>
-          </GoogleOAuthProvider>
+          <LenisProvider>
+            <GoogleOAuthProvider clientId={googleClientId}>
+              <AuthProvider>
+                {children}
+                <Toaster />
+              </AuthProvider>
+            </GoogleOAuthProvider>
+          </LenisProvider>
         </ThemeProvider>
       </body>
     </html>

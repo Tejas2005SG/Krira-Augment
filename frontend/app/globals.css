@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "lenis/dist/lenis.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -117,4 +118,30 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes gradient {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-gradient {
+  animation: gradient 4s ease infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 3s infinite;
 }
