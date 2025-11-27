@@ -555,11 +555,15 @@ class LLMService:
     # Internal helpers
     # ------------------------------------------------------------------
     def _build_chain(self, *, model: str, api_key: str, base_url: str, system_prompt: str):
+        # Claude models with :thinking suffix require temperature=1
+        is_thinking_model = ":thinking" in model.lower()
+        
         llm = ChatOpenAI(
             model=model,
             api_key=api_key,
             base_url=base_url,
             max_tokens=self._settings.llm_max_tokens,
+            temperature=1.0 if is_thinking_model else 0.7,
         )
 
         prompt = ChatPromptTemplate.from_messages(
