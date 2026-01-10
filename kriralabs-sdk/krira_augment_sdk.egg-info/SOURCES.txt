@@ -1,0 +1,11 @@
+README.md
+setup.py
+krira_augment/__init__.py
+krira_augment/client.py
+krira_augment/exceptions.py
+krira_augment_sdk.egg-info/PKG-INFO
+krira_augment_sdk.egg-info/SOURCES.txt
+krira_augment_sdk.egg-info/dependency_links.txt
+krira_augment_sdk.egg-info/not-zip-safe
+krira_augment_sdk.egg-info/requires.txt
+krira_augment_sdk.egg-info/top_level.txt

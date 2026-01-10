@@ -365,7 +365,7 @@ export function TrainLLMTab() {
           console.error("Failed to load chatbot:", error)
           const message = error instanceof Error ? error.message : "Failed to load chatbot data"
           toast({
-            title: "Error loading chatbot",
+            title: "Error loading pipeline",
             description: message
           })
         }
@@ -385,7 +385,7 @@ export function TrainLLMTab() {
   const handleCreateChatbot = React.useCallback(async () => {
     const trimmedName = chatbotNameInput.trim()
     if (!trimmedName) {
-      toast({ title: "Name required", description: "Please enter a name for your chatbot." })
+      toast({ title: "Name required", description: "Please enter a name for your pipeline." })
       return
     }
 
@@ -394,7 +394,7 @@ export function TrainLLMTab() {
       setIsCreatingChatbot(true)
       try {
         await chatbotService.updateChatbot(chatbotId, { name: trimmedName })
-        toast({ title: "Name updated", description: "Chatbot title saved." })
+        toast({ title: "Name updated", description: "Pipeline title saved." })
         setActiveStep(1)
         setMaxUnlockedStep((prev) => Math.max(prev, 1))
       } catch (error) {
@@ -431,7 +431,7 @@ export function TrainLLMTab() {
           // Likely a fresh bot or empty draft
           setChatbotId(response._id)
           setIsChatbotCompleted(Boolean(response.isCompleted))
-          toast({ title: "Chatbot created", description: `Started training pipeline for ${response.name}` })
+          toast({ title: "Pipeline created", description: `Started training pipeline for ${response.name}` })
 
           // If it's a fresh bot (draft), we treat it as "Created"
           // Set active step to 1 (Upload)
@@ -454,7 +454,7 @@ export function TrainLLMTab() {
           : error.message ?? "Could not create chatbot. Please try again."
         toast({ title: "Creation failed", description })
       } else {
-        toast({ title: "Creation failed", description: "Could not create chatbot. Please try again." })
+        toast({ title: "Creation failed", description: "Could not create pipeline. Please try again." })
       }
     } finally {
       setIsCreatingChatbot(false)
@@ -510,18 +510,18 @@ export function TrainLLMTab() {
 
       toast({
         title: "Pipeline finalized",
-        description: "This chatbot now counts toward your plan usage.",
+        description: "This pipeline now counts toward your plan usage.",
       });
       return true;
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) {
         toast({
           title: "Pipeline limit reached",
-          description: error.message ?? "You have reached the chatbot limit for your plan.",
+          description: error.message ?? "You have reached the pipeline limit for your plan.",
           variant: "destructive",
         });
       } else {
-        const message = error instanceof Error ? error.message : "Unable to finalize chatbot";
+        const message = error instanceof Error ? error.message : "Unable to finalize pipeline";
         toast({ title: "Finalization failed", description: message });
       }
       return false;

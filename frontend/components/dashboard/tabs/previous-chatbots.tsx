@@ -145,7 +145,7 @@ export function PreviousPipelinesTab() {
 
   const handlePlayground = (chatbot: Chatbot) => {
     // Navigate to playground tab with chatbot ID
-    router.push(`/dashboard?tab=playground&chatbotId=${chatbot._id}`)
+    router.push(`/dashboard?tab=playground&pipelineId=${chatbot._id}`)
   }
 
   const handleExportDetails = (chatbot: Chatbot) => {
@@ -155,7 +155,7 @@ export function PreviousPipelinesTab() {
       // Add title
       doc.setFontSize(20)
       doc.setTextColor(37, 99, 235) // Blue color
-      doc.text("Chatbot Configuration Details", 20, 20)
+      doc.text("Pipeline Configuration Details", 20, 20)
 
       // Reset for body text
       doc.setFontSize(10)

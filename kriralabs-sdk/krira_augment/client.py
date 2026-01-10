@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
@@ -21,6 +22,11 @@ from .exceptions import (
 
 DEFAULT_BASE_URL = "https://rag-python-backend.onrender.com/v1"
 USER_AGENT = "krira-augment-sdk/1.0.0"
+
+# Default timeout increased to 60s to account for Render cold starts
+DEFAULT_TIMEOUT = 60.0
+# Number of retries for timeout errors
+DEFAULT_RETRIES = 2
 
 
 @dataclass(slots=True)
@@ -42,7 +48,8 @@ class KriraAugment:
         api_key: str,
         pipeline_name: str,
         base_url: str | None = None,
-        timeout: float = 15.0,
+        timeout: float = DEFAULT_TIMEOUT,
+        retries: int = DEFAULT_RETRIES,
         session: Optional[requests.Session] = None,
     ) -> None:
         if not api_key or not api_key.strip():
@@ -56,6 +63,7 @@ class KriraAugment:
         self.pipeline_name = pipeline_name.strip()
         self.base_url = (base_url or DEFAULT_BASE_URL).rstrip("/")
         self.timeout = timeout
+        self.retries = max(0, retries)
         self._session = session or requests.Session()
         self._session.headers.update({
             "Authorization": f"Bearer {self.api_key}",
@@ -107,13 +115,28 @@ class KriraAugment:
     # Internal helpers
     # ---------------------------------------------------------------------
     def _post(self, path: str, payload: Dict[str, Any], timeout: float) -> Response:
+        """POST with automatic retry on timeout (handles Render cold starts)."""
         url = f"{self.base_url}{path}"
-        try:
-            return self._session.post(url, json=payload, timeout=timeout)
-        except RequestsTimeout as exc:  # pragma: no cover - network guard
-            raise TransportError("Request to Krira Augment timed out") from exc
-        except RequestsConnectionError as exc:  # pragma: no cover - network guard
-            raise TransportError("Unable to reach Krira Augment API") from exc
+        last_error: Optional[Exception] = None
+        
+        for attempt in range(self.retries + 1):
+            try:
+                return self._session.post(url, json=payload, timeout=timeout)
+            except RequestsTimeout as exc:
+                last_error = exc
+                if attempt < self.retries:
+                    # Exponential backoff: 2s, 4s, 8s...
+                    wait_time = 2 ** (attempt + 1)
+                    time.sleep(wait_time)
+                    continue
+            except RequestsConnectionError as exc:
+                raise TransportError("Unable to reach Krira Augment API") from exc
+        
+        # All retries exhausted
+        raise TransportError(
+            f"Request to Krira Augment timed out after {self.retries + 1} attempts. "
+            "The server may be waking up from cold start - please try again."
+        ) from last_error
 
     def _parse_response(self, response: Response) -> Dict[str, Any]:
         if response.status_code == 401:

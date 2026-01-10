@@ -15,7 +15,7 @@ LONG_DESCRIPTION = (
 
 setup(
     name="krira-augment-sdk",
-    version="1.0.0",
+    version="1.0.1",
     description="Official Python SDK for building integrations with Krira Augment RAG pipelines",
     long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",

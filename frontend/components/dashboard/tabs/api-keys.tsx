@@ -110,7 +110,7 @@ export function ApiKeysTab() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [keyName, setKeyName] = React.useState("")
-  const [selectedBot, setSelectedBot] = React.useState("")
+  const [selectedPipeline, setSelectedPipeline] = React.useState("")
   const [expiration, setExpiration] = React.useState("never")
   const [rateLimit, setRateLimit] = React.useState("60")
   const [permissions, setPermissions] = React.useState<string[]>(["chat"])
@@ -127,7 +127,7 @@ export function ApiKeysTab() {
         ])
         setKeys(keysResponse.keys)
         setChatbots(chatbotResponse.chatbots)
-        setSelectedBot((current) => current || chatbotResponse.chatbots[0]?._id || "")
+        setSelectedPipeline((current) => current || chatbotResponse.chatbots[0]?._id || "")
       } catch (error) {
         const message = error instanceof ApiError ? error.message : "Failed to load API keys"
         toast({ title: "Could not load keys", description: message, variant: "destructive" })
@@ -146,7 +146,7 @@ export function ApiKeysTab() {
   }
 
   const handleKeyCreation = async () => {
-    if (!keyName || !selectedBot) return
+    if (!keyName || !selectedPipeline) return
 
     // Check if key name already exists (case-insensitive)
     const isDuplicate = keys.some(
@@ -166,7 +166,7 @@ export function ApiKeysTab() {
     try {
       const payload: CreateApiKeyPayload = {
         name: keyName,
-        botId: selectedBot,
+        pipelineId: selectedPipeline,
         permissions,
         rateLimitPerMinute: Number(rateLimit) || 60,
       }
@@ -219,18 +219,18 @@ export function ApiKeysTab() {
     setRateLimit("60")
   }
 
-  const fallbackBotName =
-    chatbots.find((bot) => bot._id === selectedBot)?.name ||
-    keys[0]?.bot?.name ||
-    "your-bot-name"
+  const fallbackPipelineName =
+    chatbots.find((bot) => bot._id === selectedPipeline)?.name ||
+    keys[0]?.pipeline?.name ||
+    "your-pipeline-name"
   const snippetKey = generatedKey ?? "sk-live-your-key"
-  const snippetBotIdentifier = fallbackBotName.replace(/"/g, '\\"')
+  const snippetPipelineIdentifier = fallbackPipelineName.replace(/"/g, '\\"')
   const curlSnippet = `curl -X POST ${PUBLIC_API_URL}/chat \\
   -H "Authorization: Bearer ${snippetKey}" \\
   -H "Content-Type: application/json" \\
-  -d '{"pipeline_name": "${snippetBotIdentifier}", "query": "What is the status of my order?"}'`
+  -d '{"pipeline_name": "${snippetPipelineIdentifier}", "query": "What is the status of my order?"}'`
 
-  const pythonSnippet = `from krira_augment import KriraAugment\n\nclient = KriraAugment(api_key="${snippetKey}", pipeline_name="${snippetBotIdentifier}")\nresponse = client.ask("What can you help me with?")\nprint(response.answer)`
+  const pythonSnippet = `from krira_augment import KriraAugment\n\nclient = KriraAugment(api_key="${snippetKey}", pipeline_name="${snippetPipelineIdentifier}")\nresponse = client.ask("What can you help me with?")\nprint(response.answer)`
 
   return (
     <div className="space-y-6 overflow-x-hidden">
@@ -261,7 +261,7 @@ export function ApiKeysTab() {
               <TableHeader>
                 <TableRow className="space-mono-regular">
                   <TableHead>Name</TableHead>
-                  <TableHead>Bot</TableHead>
+                  <TableHead>Pipeline</TableHead>
                   <TableHead>Key</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead>Last used</TableHead>
@@ -274,7 +274,7 @@ export function ApiKeysTab() {
                 {keys.map((key) => (
                   <TableRow key={key.id} className="fira-mono-regular">
                     <TableCell className="font-medium">{key.name}</TableCell>
-                    <TableCell>{key.bot?.name ?? "—"}</TableCell>
+                    <TableCell>{key.pipeline?.name ?? "—"}</TableCell>
                     <TableCell className="font-mono text-sm">{key.maskedKey}</TableCell>
                     <TableCell>{formatDate(key.createdAt)}</TableCell>
                     <TableCell>{formatRelative(key.lastUsedAt)}</TableCell>
@@ -317,7 +317,7 @@ export function ApiKeysTab() {
       <Card>
         <CardHeader>
           <CardTitle className="space-mono-regular">Integration Guide</CardTitle>
-          <CardDescription className="fira-mono-regular">Complete guide to integrate your chatbot into your applications.</CardDescription>
+          <CardDescription className="fira-mono-regular">Complete guide to integrate your pipeline into your applications.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
           {/* Step 1: Installation */}
@@ -344,7 +344,7 @@ export function ApiKeysTab() {
               </div>
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground space-mono-regular">Pipeline Name</Label>
-                <CodeSnippet label="Name" code={snippetBotIdentifier} language="text" />
+                <CodeSnippet label="Name" code={snippetPipelineIdentifier} language="text" />
               </div>
             </div>
           </div>
@@ -393,7 +393,7 @@ export function ApiKeysTab() {
               <AccordionContent className="fira-mono-regular">
                 <ul className="list-disc space-y-2 pl-4 text-sm text-muted-foreground">
                   <li>Rotate keys every 60 days.</li>
-                  <li>Use separate keys for staging and production bots.</li>
+                  <li>Use separate keys for staging and production pipelines.</li>
                   <li>Revoke unused keys immediately.</li>
                 </ul>
               </AccordionContent>
@@ -433,11 +433,11 @@ export function ApiKeysTab() {
 
             <div className="grid gap-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-                Associated Chatbot
+                Associated Pipeline
               </Label>
-              <Select value={selectedBot} onValueChange={setSelectedBot}>
+              <Select value={selectedPipeline} onValueChange={setSelectedPipeline}>
                 <SelectTrigger className="h-10">
-                  <SelectValue placeholder="Select a chatbot" />
+                  <SelectValue placeholder="Select a pipeline" />
                 </SelectTrigger>
                 <SelectContent>
                   {chatbots.map((bot) => (

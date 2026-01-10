@@ -40,13 +40,13 @@ async def _verify_api_key(
     pipeline_name: str,
     settings: Settings,
 ) -> Dict[str, Any]:
-    """Verify API key with the Node.js backend (uses botId internally for compatibility)."""
+    """Verify API key with the Node.js backend."""
     if not settings.service_api_secret:
         raise HTTPException(status_code=500, detail="SERVICE_API_SECRET is not configured")
 
     verify_url = settings.api_verification_url.rstrip("/")
-    # Internal call to Node.js backend still uses botId for backward compatibility
-    payload = {"apiKey": api_key, "botId": pipeline_name}
+    # Forward pipeline_name to Node.js backend
+    payload = {"apiKey": api_key, "pipelineName": pipeline_name}
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
@@ -72,7 +72,7 @@ async def _track_usage(
     settings: Settings,
     tokens: int = 0,
 ) -> None:
-    """Track usage for SDK API calls (uses botId internally for Node.js backend compatibility)."""
+    """Track usage for SDK API calls."""
     if not settings.service_api_secret:
         return  # Skip tracking if not configured
 
@@ -80,8 +80,7 @@ async def _track_usage(
     base_url = settings.api_verification_url.rsplit("/", 1)[0]
     track_url = f"{base_url}/track-usage"
     
-    # Internal call to Node.js backend still uses botId for backward compatibility
-    payload = {"apiKey": api_key, "botId": pipeline_name, "tokens": tokens}
+    payload = {"apiKey": api_key, "pipelineName": pipeline_name, "tokens": tokens}
 
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
@@ -119,9 +118,10 @@ async def chat_with_pipeline(
     api_key = _extract_bearer_token(authorization)
     verification = await _verify_api_key(api_key=api_key, pipeline_name=payload.pipeline_name, settings=settings)
 
-    bot = verification.get("bot") or {}
-    llm_config = bot.get("llm") or {}
-    embedding_config = bot.get("embedding") or {}
+    # Support both new 'pipeline' and legacy 'bot' response structures
+    pipeline_config = verification.get("pipeline") or verification.get("bot") or {}
+    llm_config = pipeline_config.get("llm") or {}
+    embedding_config = pipeline_config.get("embedding") or {}
 
     if not llm_config:
         raise HTTPException(status_code=400, detail="Pipeline is not configured with an LLM")

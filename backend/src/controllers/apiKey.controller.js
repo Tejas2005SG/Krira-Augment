@@ -61,10 +61,17 @@ const serializeKey = (keyDoc, bot) => ({
   rateLimitPerMinute: keyDoc.rateLimitPerMinute,
   bot: bot
     ? {
-        id: bot._id.toString(),
-        name: bot.name,
-        slug: slugify(bot.name),
-      }
+      id: bot._id.toString(),
+      name: bot.name,
+      slug: slugify(bot.name),
+    }
+    : undefined,
+  pipeline: bot
+    ? {
+      id: bot._id.toString(),
+      name: bot.name,
+      slug: slugify(bot.name),
+    }
     : undefined,
 });
 
@@ -85,19 +92,20 @@ export const listApiKeys = async (req, res) => {
 
 export const createApiKey = async (req, res) => {
   try {
-    const { name, botId, permissions, expiresInDays, expiresAt, rateLimitPerMinute } = req.body ?? {};
+    const { name, pipelineId, botId, permissions, expiresInDays, expiresAt, rateLimitPerMinute } = req.body ?? {};
+    const targetId = pipelineId || botId;
 
     if (!name || !String(name).trim()) {
       return res.status(400).json({ message: "Key name is required" });
     }
 
-    if (!botId) {
-      return res.status(400).json({ message: "botId is required" });
+    if (!targetId) {
+      return res.status(400).json({ message: "pipelineId is required" });
     }
 
-    const bot = await Chatbot.findOne({ _id: botId, userId: req.user._id }).select("name");
+    const bot = await Chatbot.findOne({ _id: targetId, userId: req.user._id }).select("name");
     if (!bot) {
-      return res.status(404).json({ message: "Chatbot not found" });
+      return res.status(404).json({ message: "Pipeline not found" });
     }
 
     const rawKey = generateRawKey();
@@ -116,7 +124,7 @@ export const createApiKey = async (req, res) => {
     const keyDoc = await ApiKey.create({
       name: String(name).trim(),
       userId: req.user._id,
-      botId,
+      botId: targetId,
       botNameSnapshot: bot.name,
       botSlugSnapshot: slugify(bot.name),
       keyHash,
@@ -181,13 +189,14 @@ const enforceRateLimit = (key) => {
 
 export const verifyApiKey = async (req, res) => {
   try {
-    const { apiKey, botId } = req.body ?? {};
+    const { apiKey, pipelineName, botId } = req.body ?? {};
+    const identifier = pipelineName || botId;
 
-    if (!apiKey || !botId) {
-      return res.status(400).json({ message: "apiKey and botId are required" });
+    if (!apiKey || !identifier) {
+      return res.status(400).json({ message: "apiKey and pipelineName are required" });
     }
 
-    const botIdentifier = String(botId).trim();
+    const botIdentifier = String(identifier).trim();
     const keyHash = hashApiKey(apiKey);
     const key = await ApiKey.findOne({ keyHash }).populate({ path: "botId", select: "name dataset embedding llm" });
 
@@ -212,7 +221,7 @@ export const verifyApiKey = async (req, res) => {
     const matchesIdentifier = candidateValues.includes(normalizedInput) || (inputSlug && candidateValues.includes(inputSlug));
 
     if (!matchesIdentifier) {
-      return res.status(403).json({ message: "API key is not authorized for this bot" });
+      return res.status(403).json({ message: "API key is not authorized for this pipeline" });
     }
 
     if (key.expiresAt && key.expiresAt.getTime() < Date.now()) {
@@ -230,23 +239,32 @@ export const verifyApiKey = async (req, res) => {
     key.usageCount += 1;
     await key.save();
 
-    const botPayload = key.botId?.toObject ? key.botId.toObject() : key.botId;
-    if (botPayload?.embedding?.pineconeConfig?.apiKey) {
-      const decrypted = decryptApiKey(botPayload.embedding.pineconeConfig.apiKey);
+    const pipelinePayload = key.botId?.toObject ? key.botId.toObject() : key.botId;
+    if (pipelinePayload?.embedding?.pineconeConfig?.apiKey) {
+      const decrypted = decryptApiKey(pipelinePayload.embedding.pineconeConfig.apiKey);
       if (decrypted) {
-        botPayload.embedding.pineconeConfig.apiKey = decrypted;
+        pipelinePayload.embedding.pineconeConfig.apiKey = decrypted;
       }
     }
 
     return res.json({
       valid: true,
       permissions: key.permissions,
+      // Return 'pipeline' object for new clients, 'bot' for backward compatibility if needed
+      pipeline: {
+        id: key.botId._id.toString(),
+        name: key.botId.name,
+        dataset: pipelinePayload?.dataset,
+        embedding: pipelinePayload?.embedding,
+        llm: pipelinePayload?.llm,
+      },
+      // Legacy support
       bot: {
         id: key.botId._id.toString(),
         name: key.botId.name,
-        dataset: botPayload?.dataset,
-        embedding: botPayload?.embedding,
-        llm: botPayload?.llm,
+        dataset: pipelinePayload?.dataset,
+        embedding: pipelinePayload?.embedding,
+        llm: pipelinePayload?.llm,
       },
       rateLimitPerMinute: key.rateLimitPerMinute,
     });
@@ -261,10 +279,11 @@ export const verifyApiKey = async (req, res) => {
  */
 export const trackApiKeyUsage = async (req, res) => {
   try {
-    const { apiKey, botId, tokens } = req.body ?? {};
+    const { apiKey, pipelineName, pipelineId, botId, tokens } = req.body ?? {};
+    const identifier = pipelineName || pipelineId || botId;
 
-    if (!apiKey || !botId) {
-      return res.status(400).json({ message: "apiKey and botId are required" });
+    if (!apiKey || !identifier) {
+      return res.status(400).json({ message: "apiKey and pipelineName are required" });
     }
 
     const keyHash = hashApiKey(apiKey);
@@ -282,24 +301,24 @@ export const trackApiKeyUsage = async (req, res) => {
 
     // Track usage
     try {
-      await consumeRequests(user, 1, { 
-        source: 'sdk', 
-        botId,
-        tokens: tokens || 0 
+      await consumeRequests(user, 1, {
+        source: 'sdk',
+        botId: identifier,
+        tokens: tokens || 0
       });
-      console.log('Usage tracked for SDK request:', { userId: user._id, botId });
+      console.log('Usage tracked for SDK request:', { userId: user._id, botId: identifier });
     } catch (usageError) {
       if (usageError.statusCode === 402) {
-        return res.status(402).json({ 
-          success: false, 
-          message: usageError.message 
+        return res.status(402).json({
+          success: false,
+          message: usageError.message
         });
       }
       console.error('Failed to track usage:', usageError);
     }
 
-    return res.json({ 
-      success: true, 
+    return res.json({
+      success: true,
       message: "Usage tracked successfully",
       questionsUsed: user.questionsUsed,
       questionLimit: user.questionLimit,

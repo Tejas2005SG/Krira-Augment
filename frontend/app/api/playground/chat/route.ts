@@ -6,11 +6,11 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:500
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { chatbotId, message, sessionId } = body
+    const { pipelineId, message, sessionId } = body
 
-    if (!chatbotId || !message) {
+    if (!pipelineId || !message) {
       return NextResponse.json(
-        { error: "chatbotId and message are required" },
+        { error: "pipelineId and message are required" },
         { status: 400 }
       )
     }
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({
-        chatbotId,
+        pipelineId,
         message,
         sessionId,
       }),

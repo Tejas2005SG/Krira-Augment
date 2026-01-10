@@ -5,7 +5,7 @@ import { ENV } from '../lib/env.js';
 import { consumeRequests, ensureRequestCapacity } from '../services/usage.service.js';
 
 // Use local Python backend in development, hosted in production
-const PYTHON_BACKEND_URL = ENV.NODE_ENV === 'production' 
+const PYTHON_BACKEND_URL = ENV.NODE_ENV === 'production'
   ? (ENV.PYTHON_BACKEND_URL_HOSTED || 'https://rag-python-backend.onrender.com')
   : (ENV.PYTHON_BACKEND_URL || 'http://127.0.0.1:8000');
 const CHAT_HISTORY_TTL = 60 * 60 * 24 * 30; // 30 days
@@ -20,12 +20,12 @@ async function storeChatMessage(sessionId, chatbotId, role, content) {
     content,
     timestamp: new Date().toISOString(),
   };
-  
+
   try {
     // Get existing messages
     const existingData = await redisClient.get(key);
     let messages = [];
-    
+
     if (existingData) {
       try {
         messages = typeof existingData === 'string' ? JSON.parse(existingData) : existingData;
@@ -34,13 +34,13 @@ async function storeChatMessage(sessionId, chatbotId, role, content) {
         messages = [];
       }
     }
-    
+
     // Add new message
     messages.push(message);
-    
+
     // Store with TTL
     await redisClient.client.setex(key, CHAT_HISTORY_TTL, JSON.stringify(messages));
-    
+
     return messages;
   } catch (error) {
     console.error('Error storing chat message:', error);
@@ -53,12 +53,12 @@ async function storeChatMessage(sessionId, chatbotId, role, content) {
  */
 async function getChatHistory(sessionId, chatbotId) {
   const key = `chat:${chatbotId}:${sessionId}`;
-  
+
   try {
     const data = await redisClient.get(key);
-    
+
     if (!data) return [];
-    
+
     try {
       const messages = typeof data === 'string' ? JSON.parse(data) : data;
       return Array.isArray(messages) ? messages : [];
@@ -76,7 +76,7 @@ async function getChatHistory(sessionId, chatbotId) {
  */
 async function clearChatHistory(sessionId, chatbotId) {
   const key = `chat:${chatbotId}:${sessionId}`;
-  
+
   try {
     await redisClient.client.del(key);
     return true;
@@ -91,18 +91,19 @@ async function clearChatHistory(sessionId, chatbotId) {
  */
 export const playgroundChat = async (req, res) => {
   try {
-    const { chatbotId, message, sessionId } = req.body;
+    const { pipelineId, chatbotId, message, sessionId } = req.body;
+    const targetId = pipelineId || chatbotId;
     const userId = req.user._id;
 
-    if (!chatbotId || !message) {
+    if (!targetId || !message) {
       return res.status(400).json({
         success: false,
-        message: 'chatbotId and message are required',
+        message: 'pipelineId and message are required',
       });
     }
 
     // Find the chatbot and verify ownership
-    const chatbot = await Chatbot.findOne({ _id: chatbotId, userId });
+    const chatbot = await Chatbot.findOne({ _id: targetId, userId });
 
     if (!chatbot) {
       return res.status(404).json({
@@ -140,10 +141,10 @@ export const playgroundChat = async (req, res) => {
 
     // Store user message in Redis
     const effectiveSessionId = sessionId || `session-${Date.now()}`;
-    await storeChatMessage(effectiveSessionId, chatbotId, 'user', message);
+    await storeChatMessage(effectiveSessionId, targetId, 'user', message);
 
     // Get chat history for context (last 10 messages)
-    const chatHistory = await getChatHistory(effectiveSessionId, chatbotId);
+    const chatHistory = await getChatHistory(effectiveSessionId, targetId);
     const recentHistory = chatHistory.slice(-10);
 
     // Prepare the request to Python backend
@@ -177,10 +178,10 @@ export const playgroundChat = async (req, res) => {
     // Call Python backend for RAG response with timeout
     console.log('Calling Python backend:', `${PYTHON_BACKEND_URL}/api/llm/playground-chat`);
     console.log('Request body:', JSON.stringify(requestBody, null, 2));
-    
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
-    
+
     let response;
     try {
       response = await fetch(`${PYTHON_BACKEND_URL}/api/llm/playground-chat`, {
@@ -205,7 +206,7 @@ export const playgroundChat = async (req, res) => {
         message: 'Failed to connect to AI service. Please try again.',
       });
     }
-    
+
     clearTimeout(timeoutId);
 
     if (!response.ok) {
@@ -222,7 +223,7 @@ export const playgroundChat = async (req, res) => {
 
     // Track usage - consume 1 request
     try {
-      await consumeRequests(user, 1, { source: 'playground', chatbotId });
+      await consumeRequests(user, 1, { source: 'playground', botId: targetId });
       console.log('Usage tracked for playground request');
     } catch (usageError) {
       console.error('Failed to track usage:', usageError);
@@ -230,7 +231,7 @@ export const playgroundChat = async (req, res) => {
     }
 
     // Store assistant response in Redis
-    await storeChatMessage(effectiveSessionId, chatbotId, 'assistant', data.answer);
+    await storeChatMessage(effectiveSessionId, targetId, 'assistant', data.answer);
 
     return res.status(200).json({
       success: true,
@@ -252,27 +253,28 @@ export const playgroundChat = async (req, res) => {
  */
 export const getPlaygroundHistory = async (req, res) => {
   try {
-    const { chatbotId, sessionId } = req.params;
+    const { pipelineId, chatbotId, sessionId } = req.params;
+    const targetId = pipelineId || chatbotId;
     const userId = req.user._id;
 
-    if (!chatbotId || !sessionId) {
+    if (!targetId || !sessionId) {
       return res.status(400).json({
         success: false,
-        message: 'chatbotId and sessionId are required',
+        message: 'pipelineId and sessionId are required',
       });
     }
 
     // Verify chatbot ownership
-    const chatbot = await Chatbot.findOne({ _id: chatbotId, userId });
+    const chatbot = await Chatbot.findOne({ _id: targetId, userId });
 
     if (!chatbot) {
       return res.status(404).json({
         success: false,
-        message: 'Chatbot not found or access denied',
+        message: 'Pipeline not found or access denied',
       });
     }
 
-    const history = await getChatHistory(sessionId, chatbotId);
+    const history = await getChatHistory(sessionId, targetId);
 
     return res.status(200).json({
       success: true,
@@ -292,27 +294,28 @@ export const getPlaygroundHistory = async (req, res) => {
  */
 export const clearPlaygroundHistory = async (req, res) => {
   try {
-    const { chatbotId, sessionId } = req.params;
+    const { pipelineId, chatbotId, sessionId } = req.params;
+    const targetId = pipelineId || chatbotId;
     const userId = req.user._id;
 
-    if (!chatbotId || !sessionId) {
+    if (!targetId || !sessionId) {
       return res.status(400).json({
         success: false,
-        message: 'chatbotId and sessionId are required',
+        message: 'pipelineId and sessionId are required',
       });
     }
 
     // Verify chatbot ownership
-    const chatbot = await Chatbot.findOne({ _id: chatbotId, userId });
+    const chatbot = await Chatbot.findOne({ _id: targetId, userId });
 
     if (!chatbot) {
       return res.status(404).json({
         success: false,
-        message: 'Chatbot not found or access denied',
+        message: 'Pipeline not found or access denied',
       });
     }
 
-    await clearChatHistory(sessionId, chatbotId);
+    await clearChatHistory(sessionId, targetId);
 
     return res.status(200).json({
       success: true,

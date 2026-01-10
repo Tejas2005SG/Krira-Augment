@@ -13,7 +13,7 @@ export interface ApiKeyRecord {
   expiresAt?: string
   usageCount: number
   rateLimitPerMinute: number
-  bot?: {
+  pipeline?: {
     id: string
     name: string
   }
@@ -21,7 +21,7 @@ export interface ApiKeyRecord {
 
 export interface CreateApiKeyPayload {
   name: string
-  botId: string
+  pipelineId: string
   permissions?: string[]
   expiresInDays?: number
   expiresAt?: string

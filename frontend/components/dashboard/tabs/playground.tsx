@@ -182,10 +182,10 @@ export function PlaygroundTab() {
         )
         setChatbots(activeBots)
 
-        // Check for chatbotId in URL params
-        const chatbotId = searchParams.get("chatbotId")
-        if (chatbotId) {
-          const bot = activeBots.find((b) => b._id === chatbotId)
+        // Check for pipelineId in URL params
+        const pipelineId = searchParams.get("pipelineId")
+        if (pipelineId) {
+          const bot = activeBots.find((b) => b._id === pipelineId)
           if (bot) {
             setSelectedChatbot(bot)
           }
@@ -283,7 +283,7 @@ export function PlaygroundTab() {
 
     try {
       const data = await playgroundService.chat({
-        chatbotId: selectedChatbot._id,
+        pipelineId: selectedChatbot._id,
         message: userMessage.content,
         sessionId: activeSession.id,
       })
@@ -370,7 +370,7 @@ export function PlaygroundTab() {
     const bot = chatbots.find((b) => b._id === chatbotId)
     if (bot) {
       setSelectedChatbot(bot)
-      router.push(`/dashboard?tab=playground&chatbotId=${chatbotId}`)
+      router.push(`/dashboard?tab=playground&pipelineId=${chatbotId}`)
     }
   }
 
@@ -388,15 +388,15 @@ export function PlaygroundTab() {
         <CardHeader>
           <CardTitle className="flex items-center justify-center gap-2 space-mono-regular">
             <Bot className="h-6 w-6" />
-            No Active Chatbots
+            No Active Pipelines
           </CardTitle>
           <CardDescription className="fira-mono-regular">
-            You need to create and deploy a chatbot first before using the playground.
+            You need to create and deploy a pipeline first before using the playground.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button onClick={() => router.push("/dashboard?tab=train-llm")} className="space-mono-regular">
-            Create Your First Chatbot
+            Create Your First Pipeline
           </Button>
         </CardContent>
       </Card>
@@ -451,13 +451,13 @@ export function PlaygroundTab() {
               <Bot className="h-8 w-8 text-primary" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold space-mono-regular">Select a Chatbot</h3>
+              <h3 className="text-lg font-semibold space-mono-regular">Select a Pipeline</h3>
               <p className="text-sm text-muted-foreground mt-1 mb-4 fira-mono-regular">
-                Choose a chatbot to start chatting.
+                Choose a pipeline to start chatting.
               </p>
               <Select value="" onValueChange={handleSelectChatbot}>
                 <SelectTrigger className="w-[240px] mx-auto">
-                  <SelectValue placeholder="Select a chatbot" />
+                  <SelectValue placeholder="Select a pipeline" />
                 </SelectTrigger>
                 <SelectContent>
                   {chatbots.map((bot) => (

@@ -1,7 +1,7 @@
 import { apiClient } from "./client"
 
 export type PlaygroundChatRequest = {
-  chatbotId: string
+  pipelineId: string
   message: string
   sessionId?: string
 }
