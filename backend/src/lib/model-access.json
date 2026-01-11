@@ -1,0 +1,59 @@
+{
+    "openai": {
+        "freeModels": [
+            "openai/gpt-4.1",
+            "openai/gpt-oss-120b"
+        ],
+        "paidModels": [
+            "openai/gpt-5",
+            "openai/gpt-5.1"
+        ]
+    },
+    "google": {
+        "freeModels": [
+            "google/gemini-2.5-flash"
+        ],
+        "paidModels": [
+            "google/gemini-2.5-pro"
+        ]
+    },
+    "deepseek": {
+        "freeModels": [
+            "deepseek-ai/DeepSeek-R1"
+        ],
+        "paidModels": [
+            "deepseek/deepseek-v3.1"
+        ]
+    },
+    "glm": {
+        "freeModels": [
+            "z-ai/glm-4.6",
+            "z-ai/glm-4.5"
+        ],
+        "paidModels": []
+    },
+    "anthropic": {
+        "freeModels": [],
+        "paidModels": [
+            "anthropic/claude-4.5-sonnet",
+            "anthropic/claude-3-7-sonnet-20250219:thinking",
+            "anthropic/claude-opus-4.1",
+            "anthropic/claude-opus-4-20250514"
+        ]
+    },
+    "perplexity": {
+        "freeModels": [],
+        "paidModels": [
+            "perplexity/sonar-reasoning-pro",
+            "perplexity/sonar-pro",
+            "perplexity/sonar-deep-research"
+        ]
+    },
+    "grok": {
+        "freeModels": [],
+        "paidModels": [
+            "x-ai/grok-4",
+            "x-ai/grok-3-mini-beta"
+        ]
+    }
+}

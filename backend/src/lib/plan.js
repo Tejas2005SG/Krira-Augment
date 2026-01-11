@@ -1,4 +1,4 @@
-import MODEL_ACCESS from "../../../frontend/lib/model-access.json" with { type: "json" };
+import MODEL_ACCESS from "./model-access.json" with { type: "json" };
 
 const NORMALIZED_MODEL_ACCESS = Object.entries(MODEL_ACCESS).reduce((acc, [provider, details]) => {
   const free = Array.isArray(details.freeModels) ? details.freeModels.map((id) => id.toLowerCase()) : [];
@@ -16,6 +16,7 @@ const BASE_PLANS = {
     currency: "usd",
     monthlyPrice: 0,
     questionLimit: 100,
+    chatbotLimit: 0, // Unlimited
     storageLimitMb: 50,
     vectorStores: ["chroma"],
     providers: ["openai", "google", "deepseek", "glm"],
@@ -43,6 +44,7 @@ const BASE_PLANS = {
     currency: "usd",
     monthlyPrice: 49,
     questionLimit: 5000,
+    chatbotLimit: 0, // Unlimited
     storageLimitMb: 5120, // 5 GB
     vectorStores: ["chroma", "pinecone"],
     providers: ["openai", "anthropic", "google", "perplexity", "grok", "deepseek", "glm"],
@@ -70,6 +72,7 @@ const BASE_PLANS = {
     currency: "usd",
     monthlyPrice: 200,
     questionLimit: 15000,
+    chatbotLimit: 0, // Unlimited
     storageLimitMb: 20480, // 20 GB
     vectorStores: ["chroma", "pinecone"],
     providers: ["openai", "anthropic", "google", "perplexity", "grok", "deepseek", "glm"],
