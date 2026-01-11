@@ -48,6 +48,14 @@ const ACCESS_MAP: Record<string, PlanAccess> = {
     isPaid: true,
     allowedModelsByProvider: undefined,
   },
+  enterprise_monthly: {
+    allowedProviders: ["openai", "anthropic", "google", "perplexity", "grok", "deepseek", "glm"],
+    allowedEmbeddingModels: ["openai-small", "openai-large", "huggingface"],
+    allowedVectorStores: ["chroma", "pinecone"],
+    requestLimit: 15000,
+    isPaid: true,
+    allowedModelsByProvider: undefined,
+  },
 }
 
 export const resolvePlanAccess = (planId?: string): PlanAccess => {

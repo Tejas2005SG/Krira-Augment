@@ -53,7 +53,7 @@ export function DocsSidebar() {
                                             href={item.href}
                                             className={cn(
                                                 "flex items-center px-3 py-2 text-sm rounded-md transition-colors",
-                                                "text-muted-foreground hover:text-foreground hover:bg-[#3a3939]"
+                                                "text-muted-foreground hover:text-white hover:bg-[#3a3939]"
                                             )}
                                         >
                                             {item.name}

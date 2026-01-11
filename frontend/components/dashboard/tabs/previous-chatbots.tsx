@@ -583,8 +583,18 @@ function ChatbotCard({ chatbot, status, onEdit, onDelete, onExport, onPlayground
   const embeddingInfo = chatbot.embedding
   const llmInfo = chatbot.llm
 
+  const formatSize = (bytes: number) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const dm = 2;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+  };
+
   // Calculate metrics
   const totalChunks = datasetInfo?.files?.reduce((acc, f) => acc + (f.chunks || 0), 0) || 0
+  const totalSizeBytes = datasetInfo?.files?.reduce((acc, f) => acc + (f.size || 0), 0) || 0
 
   const createdDate = new Date(chatbot.createdAt).toLocaleDateString('en-US', {
     month: 'short',
@@ -633,6 +643,11 @@ function ChatbotCard({ chatbot, status, onEdit, onDelete, onExport, onPlayground
           <StatusBadge status={status} />
           {totalChunks > 0 && (
             <Badge variant="secondary" className="fira-mono-regular">{totalChunks.toLocaleString()} chunks</Badge>
+          )}
+          {totalSizeBytes > 0 && (
+            <Badge variant="outline" className="fira-mono-regular bg-muted/30">
+              {formatSize(totalSizeBytes)} storage
+            </Badge>
           )}
         </div>
 

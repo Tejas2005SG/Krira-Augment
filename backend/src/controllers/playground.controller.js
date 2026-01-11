@@ -180,7 +180,7 @@ export const playgroundChat = async (req, res) => {
     console.log('Request body:', JSON.stringify(requestBody, null, 2));
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minute timeout
+    const timeoutId = setTimeout(() => controller.abort(), 1800000); // 30 minute timeout
 
     let response;
     try {

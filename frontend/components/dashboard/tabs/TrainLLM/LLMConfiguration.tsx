@@ -125,7 +125,7 @@ export function LLMConfiguration({
                 key={option.value}
                 className={cn(
                   "relative flex flex-col items-center gap-2 rounded-2xl border px-2 py-2 text-center transition",
-                  provider === option.value ? "border-primary bg-primary/5" : "hover:border-primary/50",
+                  provider === option.value ? "border-foreground bg-secondary/50" : "hover:border-foreground/50",
                   disabled && "cursor-not-allowed opacity-60"
                 )}
                 aria-disabled={disabled}
@@ -147,8 +147,17 @@ export function LLMConfiguration({
                   </div>
                 )}
 
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
-                  <Image src={option.logo} alt={`${option.label} logo`} width={28} height={28} className="h-7 w-7" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted overflow-hidden">
+                  <Image
+                    src={option.logo}
+                    alt={`${option.label} logo`}
+                    width={28}
+                    height={28}
+                    className={cn(
+                      "h-7 w-7 object-contain",
+                      option.value === 'glm' && "bg-white p-0.5"
+                    )}
+                  />
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-semibold leading-tight space-mono-regular">{option.label}</p>
@@ -222,7 +231,10 @@ export function LLMConfiguration({
                       alt={`${activeProvider.label} logo`}
                       width={20}
                       height={20}
-                      className="h-5 w-5"
+                      className={cn(
+                        "h-5 w-5 object-contain",
+                        activeProvider.value === 'glm' && "bg-white p-0.5 rounded-sm"
+                      )}
                     />
                     <span className="text-sm font-medium">{models.find(m => m.id === model)?.label || model}</span>
                   </div>

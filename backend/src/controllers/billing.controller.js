@@ -247,8 +247,16 @@ export const handleStripeWebhook = async (req, res) => {
             const items = subscription.items?.data || [];
             if (items.length > 0) {
               const priceAmount = items[0]?.price?.unit_amount;
-              if (priceAmount === 4900) {
+              const billingInterval = items[0]?.price?.recurring?.interval;
+
+              if (priceAmount === 4900 && billingInterval === "month") {
                 planId = "startup_monthly";
+              } else if (priceAmount === 20000 && billingInterval === "month") {
+                planId = "enterprise_monthly";
+              } else if (priceAmount === 4900) {
+                planId = "startup_monthly";
+              } else if (priceAmount === 20000) {
+                planId = "enterprise_monthly";
               } else if (priceAmount > 0) {
                 planId = "startup_monthly";
               }
@@ -477,12 +485,17 @@ export const syncSubscriptionStatus = async (req, res) => {
           const priceAmount = items[0]?.price?.unit_amount;
           const billingInterval = items[0]?.price?.recurring?.interval;
 
-          // Match price to plan (49 USD monthly = starter plan)
+          // Match price to plan (49 USD monthly = starter, 200 USD = enterprise)
           // Amount is in cents
           if (priceAmount === 4900 && billingInterval === "month") {
             planId = "startup_monthly";
+          } else if (priceAmount === 20000 && billingInterval === "month") {
+            planId = "enterprise_monthly";
+          } else if (priceAmount === 4900) { // Fallback for missing interval
+            planId = "startup_monthly";
+          } else if (priceAmount === 20000) { // Fallback for missing interval
+            planId = "enterprise_monthly";
           } else if (priceAmount > 0) {
-            // Default to starter plan for any paid subscription
             planId = "startup_monthly";
           }
         }

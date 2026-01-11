@@ -55,7 +55,7 @@ const userSchema = new mongoose.Schema(
     // Subscription Details
     plan: {
       type: String,
-      enum: ['free', 'pro_monthly', 'enterprise_monthly', 'annual_startup', 'startup_monthly', 'scale_monthly', 'startup_annual'],
+      enum: ['free', 'startup_monthly', 'enterprise_monthly'],
       default: 'free',
     },
     planPrice: {
@@ -203,7 +203,7 @@ const userSchema = new mongoose.Schema(
 // Hash password before saving
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
-  
+
   if (this.password) {
     this.password = await bcrypt.hash(this.password, 12);
   }
@@ -214,7 +214,7 @@ userSchema.pre('save', async function (next) {
 userSchema.pre('save', function (next) {
   if (this.isModified('plan')) {
     const planConfig = PLAN_CONFIG[this.plan];
-    
+
     if (planConfig) {
       const planPrice = planConfig.monthlyPrice ?? planConfig.price ?? 0;
       this.planPrice = planPrice;
@@ -229,7 +229,7 @@ userSchema.pre('save', function (next) {
       this.teamMembers = planConfig.teamMembers || 0;
       this.billingCycle = planConfig.billingCycle || 'monthly';
       this.requestsResetAt = new Date();
-      
+
       if (this.plan !== 'free' && !this.apiKey) {
         this.apiKey = this.generateApiKey();
       }
@@ -251,14 +251,14 @@ userSchema.methods.generateApiKey = function () {
 // Generate password reset token
 userSchema.methods.generateResetToken = function () {
   const resetToken = crypto.randomBytes(32).toString('hex');
-  
+
   this.resetPasswordToken = crypto
     .createHash('sha256')
     .update(resetToken)
     .digest('hex');
-  
+
   this.resetPasswordExpire = Date.now() + 30 * 60 * 1000; // 30 minutes
-  
+
   return resetToken;
 };
 

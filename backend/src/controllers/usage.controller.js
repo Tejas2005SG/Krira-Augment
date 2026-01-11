@@ -18,10 +18,19 @@ export const getUsageSummary = async (req, res) => {
   }
 
   const plan = getPlanDefinition(user.plan);
-  const activePipelines = await Chatbot.countDocuments({
+  const completedPipelines = await Chatbot.find({
     userId: user._id,
     $or: [{ isCompleted: true }, { isCompleted: { $exists: false } }],
-  });
+  }).select("name dataset.files");
+
+  const pipelineStats = completedPipelines.map(bot => {
+    const size = bot.dataset?.files?.reduce((acc, f) => acc + (f.size || 0), 0) || 0;
+    return {
+      name: bot.name,
+      sizeMb: size / (1024 * 1024)
+    };
+  }).sort((a, b) => b.sizeMb - a.sizeMb);
+
   const trend = await getUsageSeries(user._id, 14);
 
   const response = {
@@ -29,7 +38,7 @@ export const getUsageSummary = async (req, res) => {
       id: plan.id,
       name: plan.displayName,
       requestLimit: plan.questionLimit,
-      pipelineLimit: plan.chatbotLimit,
+      pipelineLimit: 0,
       storageLimitMb: plan.storageLimitMb,
       providers: plan.providers,
       vectorStores: plan.vectorStores,
@@ -39,11 +48,12 @@ export const getUsageSummary = async (req, res) => {
     },
     usage: {
       requestsUsed: user.questionsUsed ?? 0,
-      requestLimit: user.questionLimit ?? plan.questionLimit,
-      pipelinesUsed: activePipelines,
-      pipelineLimit: user.chatbotLimit ?? plan.chatbotLimit,
+      requestLimit: plan.questionLimit,
+      pipelinesUsed: completedPipelines.length,
+      pipelineLimit: 0,
       storageUsedMb: user.storageUsedMb ?? 0,
-      storageLimitMb: user.storageLimitMb ?? plan.storageLimitMb,
+      storageLimitMb: plan.storageLimitMb,
+      pipelineBreakdown: pipelineStats,
     },
     trend: trend.map((entry) => ({
       date: formatDate(entry.date),

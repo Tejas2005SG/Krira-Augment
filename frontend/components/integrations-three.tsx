@@ -21,7 +21,7 @@ const integrations = [
         logo: '/pinecone.png',
         category: 'Vector Store',
         tags: ['Managed', 'Scalable'],
-        className: '',
+        className: 'rounded-lg bg-white p-1',
         featured: true
     },
     {
@@ -84,7 +84,7 @@ const integrations = [
         logo: '/glm-logo.png',
         category: 'LLM',
         tags: ['Bilingual', 'Open'],
-        className: 'rounded-lg',
+        className: 'rounded-lg bg-white p-1',
         featured: false
     },
     {

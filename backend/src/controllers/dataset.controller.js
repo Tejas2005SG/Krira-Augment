@@ -66,18 +66,11 @@ const callPython = async (payload) => {
   console.log(`[Node] Calling Python backend at ${ENV.PYTHON_BACKEND_URL}/uploaddataset`);
 
   // If file_path is provided, read the file content and send as base64
-  let enhancedPayload = { ...payload };
+  // Pass file_path directly to Python without reading content into memory
+  // This avoids "Cannot create a string longer than..." errors for large files
+  const enhancedPayload = { ...payload };
   if (payload.file_path) {
-    try {
-      const fs = await import('fs/promises');
-      const fileContent = await fs.readFile(payload.file_path);
-      enhancedPayload.file_content = fileContent.toString('base64');
-      enhancedPayload.file_path = null; // Remove file path since we're sending content
-      console.log(`[Node] Read file content (${fileContent.length} bytes) and converted to base64`);
-    } catch (error) {
-      console.error(`[Node] Failed to read file: ${error.message}`);
-      throw new Error(`Failed to read uploaded file: ${error.message}`);
-    }
+    console.log(`[Node] Passing file path to Python backend: ${payload.file_path}`);
   }
 
   try {
@@ -123,7 +116,7 @@ export const uploadDataset = async (req, res) => {
     }
 
     const plan = getPlanDefinition(userRecord.plan ?? req.user?.plan);
-    const storageLimitMb = userRecord.storageLimitMb ?? req.user?.storageLimitMb ?? plan.storageLimitMb ?? 50;
+    const storageLimitMb = plan.storageLimitMb ?? 50;
     const existingUsageMb = userRecord.storageUsedMb ?? 0;
 
     const allFiles = Object.values(req.files ?? {}).flat();
@@ -134,7 +127,7 @@ export const uploadDataset = async (req, res) => {
     if (uploadMb > 0 && projectedUsageMb - storageLimitMb > 1e-6) {
       const remainingMb = Math.max(storageLimitMb - existingUsageMb, 0);
       return res.status(403).json({
-        message: `Upload exceeds your ${storageLimitMb} MB storage allowance. ${remainingMb.toFixed(2)} MB remaining.`,
+        message: `Upload exceeds your total ${storageLimitMb} MB storage pool. ${remainingMb.toFixed(2)} MB remaining.`,
       });
     }
 

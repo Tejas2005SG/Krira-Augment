@@ -216,6 +216,9 @@ class DatasetLoader:
     def _load_csv(self, path: Path) -> list[str]:
         """Load CSV file and convert each record into a structured text row."""
 
+        # Increase CSV field limit to handle large text blobs
+        csv.field_size_limit(2147483647) 
+
         with path.open("r", encoding="utf-8", newline="") as csv_file:
             reader = csv.reader(csv_file)
             raw_rows = [

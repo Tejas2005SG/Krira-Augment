@@ -102,14 +102,23 @@ export function EmbeddingConfiguration({
                 key={model.id}
                 className={cn(
                   "flex flex-col gap-3 rounded-xl border p-4 transition",
-                  selectedModel === model.id ? "border-primary bg-primary/5" : "hover:border-primary/50",
+                  selectedModel === model.id ? "border-foreground bg-secondary/50" : "hover:border-foreground/50",
                   disabled && "cursor-not-allowed opacity-60"
                 )}
                 aria-disabled={disabled}
               >
                 <RadioGroupItem value={model.id} className="sr-only" />
                 <div className="flex items-start gap-3">
-                  <Image src={model.icon} alt={`${model.name} logo`} width={40} height={40} className="h-10 w-10" />
+                  <Image
+                    src={model.icon}
+                    alt={`${model.name} logo`}
+                    width={40}
+                    height={40}
+                    className={cn(
+                      "h-10 w-10 object-contain",
+                      model.id.includes('pinecone') && "bg-white p-1 rounded-lg"
+                    )}
+                  />
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm font-semibold space-mono-regular">{model.name}</span>
@@ -123,7 +132,7 @@ export function EmbeddingConfiguration({
                     )}
                   </div>
                   {selectedModel === model.id && (
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-foreground text-background">
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
@@ -190,7 +199,7 @@ export function EmbeddingConfiguration({
                     key={option.value}
                     className={cn(
                       "flex flex-col gap-3 rounded-lg border p-4",
-                      vectorStore === option.value ? "border-primary bg-primary/5" : "border-dashed",
+                      vectorStore === option.value ? "border-foreground bg-secondary/50" : "border-dashed",
                       disabled && "cursor-not-allowed opacity-60"
                     )}
                     aria-disabled={disabled}
@@ -202,7 +211,10 @@ export function EmbeddingConfiguration({
                         alt={`${option.label} logo`}
                         width={56}
                         height={56}
-                        className="h-14 w-14 object-contain"
+                        className={cn(
+                          "h-14 w-14 object-contain",
+                          option.value === 'pinecone' && "bg-white p-2 rounded-xl"
+                        )}
                       />
                       <div className="flex-1 space-y-2">
                         <div className="flex items-center justify-between gap-3">
@@ -217,7 +229,7 @@ export function EmbeddingConfiguration({
                         )}
                       </div>
                       {vectorStore === option.value && (
-                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-foreground text-background">
                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                           </svg>

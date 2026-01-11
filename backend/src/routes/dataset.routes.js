@@ -15,7 +15,7 @@ const router = express.Router();
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
 const uploadsDir = isProduction
   ? path.join(os.tmpdir(), 'krira_uploads')
-  : path.join(process.cwd(), 'uploads');
+  : path.resolve(process.cwd(), '..', 'uploads');
 
 if (!fs.existsSync(uploadsDir)) {
   try {
@@ -43,7 +43,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 25 * 1024 * 1024 },
+  limits: { fileSize: 20 * 1024 * 1024 * 1024 }, // 20GB
 });
 
 const datasetFields = [

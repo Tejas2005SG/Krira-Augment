@@ -20,9 +20,9 @@ const app = express();
 const PORT = process.env.PORT;
 
 const allowedOrigins = (ENV.ALLOWED_ORIGINS || ENV.CLIENT_URL || 'http://localhost:3000')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 
 // CORS configuration for cross-origin cookie authentication
 app.use(cors({
@@ -60,7 +60,10 @@ app.use("/api/usage", usageRoutes);
 app.use("/api/playground", playgroundRoutes);
 
 
-app.listen(PORT, async () => {
+const server = app.listen(PORT, async () => {
     console.log(`Server is running on port ${PORT}`);
     await connectDb();
 });
+
+server.timeout = 1800000; // 30 minutes
+server.keepAliveTimeout = 1800000; // 30 minutes

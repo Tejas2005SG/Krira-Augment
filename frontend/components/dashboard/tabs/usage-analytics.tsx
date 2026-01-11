@@ -31,11 +31,11 @@ type TrendPoint = {
   tokens: number;
 };
 
-const formatStorageValue = (value: number) => {
-  if (value <= 0) return "0";
-  if (value < 1) return value.toFixed(2);
-  if (value < 10) return value.toFixed(1);
-  return value.toFixed(0);
+const formatStorageValue = (mb: number) => {
+  if (mb <= 0) return "0 MB";
+  if (mb < 1) return `${(mb * 1024).toFixed(2)} KB`;
+  if (mb < 1024) return `${mb.toFixed(2)} MB`;
+  return `${(mb / 1024).toFixed(2)} GB`;
 };
 
 const formatHistoryDate = (value: string) => {
@@ -140,7 +140,7 @@ export function UsageAnalyticsTab() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight space-mono-regular">Usage & Analytics</h2>
-          <p className="text-muted-foreground fira-mono-regular">Monitor how your workspace consumes the RAG pipeline allowance.</p>
+          <p className="text-muted-foreground fira-mono-regular">Monitor how your workspace consumes the account allowance.</p>
         </div>
         <div className="text-sm text-muted-foreground fira-mono-regular">Last refreshed {new Date().toLocaleDateString()}</div>
       </div>
@@ -164,7 +164,7 @@ export function UsageAnalyticsTab() {
           </CardContent>
         </Card>
 
-        {/* Pipelines Card - Purple Theme */}
+        {/* Pipelines Card - Purple Theme (Restored as Count-Only) */}
         <Card className="relative overflow-hidden border-purple-200/50 bg-gradient-to-br from-purple-50 via-violet-50/50 to-pink-50 dark:from-purple-950/30 dark:via-violet-900/20 dark:to-pink-950/30 dark:border-purple-800/30">
           <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-purple-400/20 to-pink-500/20 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
           <CardHeader className="pb-2">
@@ -176,10 +176,11 @@ export function UsageAnalyticsTab() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent space-mono-regular">{usage.pipelinesUsed}/{usage.pipelineLimit}</div>
-            <p className="text-xs text-purple-600/80 dark:text-purple-400 mt-2 fira-mono-regular">RAG pipelines created</p>
+            <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent space-mono-regular">{usage.pipelinesUsed}</div>
+            <p className="text-xs text-purple-600/80 dark:text-purple-400 mt-2 fira-mono-regular">Unlimited pipelines available</p>
           </CardContent>
         </Card>
+
 
         {/* Storage Card - Emerald Theme */}
         <Card className="relative overflow-hidden border-emerald-200/50 bg-gradient-to-br from-emerald-50 via-teal-50/50 to-cyan-50 dark:from-emerald-950/30 dark:via-teal-900/20 dark:to-cyan-950/30 dark:border-emerald-800/30">
@@ -193,8 +194,10 @@ export function UsageAnalyticsTab() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent space-mono-regular">{formatStorageValue(usage.storageUsedMb)} MB</div>
-            <p className="text-xs text-emerald-600/80 dark:text-emerald-400 mt-2 fira-mono-regular">of {usage.storageLimitMb} MB per pipeline</p>
+            <div className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent space-mono-regular">
+              {formatStorageValue(usage.storageUsedMb)} / {formatStorageValue(usage.storageLimitMb)}
+            </div>
+            <p className="text-xs text-emerald-600/80 dark:text-emerald-400 mt-2 fira-mono-regular">Total account storage pool used</p>
           </CardContent>
         </Card>
 
@@ -245,6 +248,40 @@ export function UsageAnalyticsTab() {
 
       <Card>
         <CardHeader>
+          <CardTitle className="space-mono-regular">Pipeline Storage Breakdown</CardTitle>
+          <CardDescription className="fira-mono-regular">Storage used by each RAG pipeline.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!usage.pipelineBreakdown || usage.pipelineBreakdown.length === 0 ? (
+            <p className="text-sm text-muted-foreground fira-mono-regular">No pipelines active yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {(usage.pipelineBreakdown as any[]).map((pipeline) => (
+                <div
+                  key={pipeline.name}
+                  className="flex items-center justify-between rounded-lg border bg-card/50 px-4 py-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-md bg-primary/10 p-2">
+                      <Brain className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground space-mono-regular">{pipeline.name}</p>
+                      <p className="text-[10px] text-muted-foreground fira-mono-regular">Active RAG Pipeline</p>
+                    </div>
+                  </div>
+                  <Badge variant="secondary" className="text-sm font-normal fira-mono-regular">
+                    {formatStorageValue(pipeline.sizeMb)}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="space-mono-regular">Usage history</CardTitle>
           <CardDescription className="fira-mono-regular">Exact request counts captured for each day.</CardDescription>
         </CardHeader>
@@ -274,6 +311,6 @@ export function UsageAnalyticsTab() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </div >
   );
 }

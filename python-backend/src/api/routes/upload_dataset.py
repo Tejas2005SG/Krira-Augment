@@ -84,6 +84,9 @@ async def upload_dataset(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except UnsupportedDatasetError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except PermissionError as exc:
+        print(f"[Python] Permission denied: {exc}")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"File access denied: {str(exc)}") from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001

@@ -28,14 +28,14 @@ export const createChatbot = async (req, res) => {
         }
 
         const userId = req.user._id;
-        
+
         // Check if a chatbot with the same name already exists
         const existingChatbot = await Chatbot.findOne({ userId, name: trimmedName });
         if (existingChatbot) {
             // Resume existing chatbot
             // Ensure legacy state if needed
             await ensureLegacyCompletionState(existingChatbot);
-            
+
             // If we need to decrypt keys for the frontend
             const chatbotObj = existingChatbot.toObject();
             const pineconeKey = chatbotObj?.embedding?.pineconeConfig?.apiKey;
@@ -46,7 +46,7 @@ export const createChatbot = async (req, res) => {
                     chatbotObj.embedding.pineconeConfig.apiKey = null;
                 }
             }
-            
+
             // Return 200 OK to indicate retrieval/resume rather than creation
             return res.status(200).json(chatbotObj);
         }
@@ -57,15 +57,18 @@ export const createChatbot = async (req, res) => {
             return res.status(401).json({ message: "User not found" });
         }
 
-        // Count ALL chatbots (completed or draft) for the limit check
-        const totalCount = await Chatbot.countDocuments({ userId });
-        const planLimit = req.user?.chatbotLimit ?? getPlanDefinition(req.user?.plan).chatbotLimit ?? 1;
+        // Check if storage is already full before allowing a new pipeline creation
+        const plan = getPlanDefinition(user?.plan ?? req.user?.plan);
+        const storageLimitMb = plan.storageLimitMb ?? 50;
+        const currentUsageMb = user.storageUsedMb ?? 0;
 
-        if (totalCount >= planLimit) {
+        if (currentUsageMb >= storageLimitMb) {
             return res.status(403).json({
-                message: "Pipeline limit reached. You cannot create more chatbots.",
+                message: "Storage limit reached. You cannot create more pipelines until you free up space.",
             });
         }
+
+        // Multi-pipeline support enabled - constraint is now exclusively storage.
 
         const chatbot = new Chatbot({
             userId: req.user._id,
@@ -84,11 +87,11 @@ export const createChatbot = async (req, res) => {
         } else {
             user.chatbots = [chatbot._id];
         }
-        
+
         // Update chatbotsCreated count to reflect total pipelines (draft + active)
         // This ensures the user profile matches the strict limit logic
         user.chatbotsCreated = await Chatbot.countDocuments({ userId });
-        
+
         await user.save();
         await redisClient.cacheUser(user._id.toString(), user);
 
@@ -206,21 +209,25 @@ export const completeChatbot = async (req, res) => {
             return res.status(200).json(chatbot);
         }
 
-        const activeCount = await Chatbot.countDocuments(buildActivePipelineFilter(userId));
-        const planLimit = req.user?.chatbotLimit ?? getPlanDefinition(req.user?.plan).chatbotLimit ?? 1;
+        // Check storage limit before completing
+        const user = await User.findById(userId);
+        const plan = getPlanDefinition(user?.plan);
+        const storageLimitMb = plan.storageLimitMb ?? 50;
+        const currentUsageMb = user?.storageUsedMb ?? 0;
 
-        if (activeCount >= planLimit) {
+        if (currentUsageMb >= storageLimitMb) {
             return res.status(403).json({
-                message: "Pipeline limit reached. Delete an existing chatbot or upgrade your plan to add more.",
+                message: "Cannot activate pipeline. Storage pool is full.",
             });
         }
+
+        // Pipeline count checks removed in favor of total storage pool enforcement.
 
         chatbot.isCompleted = true;
         chatbot.status = "active";
         chatbot.completedAt = new Date();
         await chatbot.save();
 
-        const user = await User.findById(userId);
         if (user) {
             const totalActive = await Chatbot.countDocuments(buildActivePipelineFilter(userId));
             user.chatbotsCreated = totalActive;

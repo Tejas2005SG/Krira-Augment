@@ -18,6 +18,7 @@ export type UsageSummaryResponse = {
     embeddingModels: string[];
     isFree: boolean;
     comingSoon: boolean;
+    baseStorageLimitMb?: number;
   };
   usage: {
     requestsUsed: number;
@@ -26,6 +27,10 @@ export type UsageSummaryResponse = {
     pipelineLimit: number;
     storageUsedMb: number;
     storageLimitMb: number;
+    pipelineBreakdown?: Array<{
+      name: string;
+      sizeMb: number;
+    }>;
   };
   trend: UsageTrendPoint[];
 };

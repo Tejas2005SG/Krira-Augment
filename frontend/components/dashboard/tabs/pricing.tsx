@@ -45,7 +45,7 @@ const FALLBACK_PLANS: PlanCard[] = [
   {
     id: "free",
     name: "Free",
-    description: "Experiment with 1 pipeline and 100 requests per month.",
+    description: "Perfect for exploring the platform with 50MB storage.",
     badge: "Live",
     monthlyPrice: 0,
     annualPrice: null,
@@ -54,38 +54,38 @@ const FALLBACK_PLANS: PlanCard[] = [
     comingSoon: false,
     billingCycle: "monthly",
     requestLimit: 100,
-    pipelineLimit: 1,
+    pipelineLimit: 5,
     storageLimitMb: 50,
     providers: ["OpenAI", "Google", "DeepSeek"],
     vectorStores: ["Chroma"],
     embeddingModels: ["OpenAI Mini", "HuggingFace Base"],
-    features: ["1 RAG pipeline", "100 monthly requests", "Community support"],
+    features: ["100 monthly requests", "50 MB total storage pool"],
   },
   {
     id: "startup_monthly",
     name: "Starter",
-    description: "Unlock premium models with 5k requests and 3 pipelines.",
-    badge: "Coming soon",
+    description: "Expanded 5GB storage pool for serious projects.",
+    badge: "Most popular",
     monthlyPrice: 49,
     annualPrice: null,
     currency: "USD",
     isFree: false,
-    comingSoon: true,
+    comingSoon: false,
     billingCycle: "monthly",
     requestLimit: 5000,
-    pipelineLimit: 3,
-    storageLimitMb: 500,
+    pipelineLimit: 20,
+    storageLimitMb: 5120,
     providers: ["OpenAI", "Anthropic", "Google", "Perplexity"],
     vectorStores: ["Chroma", "Pinecone"],
     embeddingModels: ["OpenAI Pro", "HuggingFace Base"],
-    features: ["3 RAG pipelines", "5k monthly requests", "Premium provider access"],
+    features: ["5,000 monthly requests", "5 GB total storage pool"],
     highlight: true,
   },
   {
     id: "enterprise_monthly",
     name: "Enterprise",
-    description: "Maximum scale for large organizations with advanced managed infrastructure.",
-    badge: "Best value",
+    description: "Massive 20GB storage pool and infrastructure.",
+    badge: "Maximum Power",
     monthlyPrice: 200,
     annualPrice: null,
     currency: "USD",
@@ -93,12 +93,12 @@ const FALLBACK_PLANS: PlanCard[] = [
     comingSoon: false,
     billingCycle: "monthly",
     requestLimit: 15000,
-    pipelineLimit: 8,
-    storageLimitMb: 1024,
+    pipelineLimit: 100,
+    storageLimitMb: 20480,
     providers: ["OpenAI", "Anthropic", "Google", "Perplexity", "DeepSeek"],
     vectorStores: ["Chroma", "Pinecone", "Weaviate"],
     embeddingModels: ["OpenAI Pro/Ultra", "HuggingFace Large"],
-    features: ["8 RAG pipelines", "15k monthly requests", "Priority dedicated support"],
+    features: ["15,000 monthly requests", "20 GB total storage pool"],
   },
 ]
 
@@ -123,11 +123,10 @@ const formatPrice = (plan: PlanSummary) => {
   return `$${plan.monthlyPrice}`
 }
 
-const formatStorageValue = (value: number) => {
-  if (value <= 0) return "0"
-  if (value < 1) return value.toFixed(2)
-  if (value < 10) return value.toFixed(1)
-  return value.toFixed(0)
+const formatStorageValue = (mb: number) => {
+  if (mb <= 0) return "0 MB"
+  if (mb < 1024) return `${mb.toFixed(0)} MB`
+  return `${(mb / 1024).toFixed(1)} GB`
 }
 
 export function PricingTab() {
@@ -144,6 +143,7 @@ export function PricingTab() {
   const [canvas, setCanvas] = React.useState({ width: 0, height: 0 })
   const [usageSummary, setUsageSummary] = React.useState<UsageSummaryResponse | null>(null)
   const checkoutHandledRef = React.useRef(false)
+  const portalHandledRef = React.useRef(false)
   const [isCheckoutFinalizing, setIsCheckoutFinalizing] = React.useState(false)
   const [finalizingMessage, setFinalizingMessage] = React.useState<string | null>(null)
   const [isCancelling, setIsCancelling] = React.useState(false)
@@ -347,15 +347,17 @@ export function PricingTab() {
   }, [fetchPlans, fetchUsage])
 
   React.useEffect(() => {
-    if (!checkoutStatus) {
+    // Shared reset logic: Only clear the global finalizing state if NEITHER special status is present.
+    if (!checkoutStatus && !portalStatus) {
       checkoutHandledRef.current = false
+      portalHandledRef.current = false
       setIsCheckoutFinalizing(false)
       setFinalizingMessage(null)
       return
     }
 
-
-    if (checkoutHandledRef.current) {
+    // Checkout handling logic
+    if (!checkoutStatus || checkoutHandledRef.current) {
       return
     }
 
@@ -418,10 +420,10 @@ export function PricingTab() {
 
     // Use a ref to track if we've already handled this return
     // This prevents double-firing in React strict mode or rapid re-renders
-    if (checkoutHandledRef.current) {
+    if (portalHandledRef.current) {
       return
     }
-    checkoutHandledRef.current = true;
+    portalHandledRef.current = true;
 
     // Clean up the URL immediately to prevent loops on refresh
     const cleanupUrl = () => {
@@ -490,16 +492,18 @@ export function PricingTab() {
     {
       label: "Pipelines",
       value: activePipelineCount,
-      limit: usageData?.pipelineLimit ?? planLimits.pipelineLimit ?? 1,
+      limit: 0,
       icon: Zap,
-      format: (value: number, limit: number) => `${value}/${limit}`,
+      format: (value: number) => `${value} active`,
+      subtext: "Unlimited total pipelines",
     },
     {
       label: "Storage",
       value: usageData?.storageUsedMb ?? user?.storageUsedMb ?? 0,
       limit: usageData?.storageLimitMb ?? planLimits.storageLimitMb ?? 50,
       icon: Star,
-      format: (value: number, limit: number) => `${formatStorageValue(value)}MB / ${limit}MB`,
+      format: (value: number, limit: number) => `${formatStorageValue(value)} / ${formatStorageValue(limit)}`,
+      subtext: "Total account storage pool",
     },
   ]
 
@@ -557,7 +561,7 @@ export function PricingTab() {
           <div className="space-y-3">
             <p className="text-sm font-semibold text-foreground space-mono-regular">Includes</p>
             <ul className="space-y-2 text-sm text-muted-foreground fira-mono-regular">
-              {[`Requests: ${plan.requestLimit.toLocaleString()} / mo`, `Pipelines: ${plan.pipelineLimit}`, `Storage: ${plan.storageLimitMb} MB / pipeline`, ...plan.features].map((feature) => (
+              {[`Requests: ${plan.requestLimit.toLocaleString()} / mo`, `Total Storage: ${formatStorageValue(plan.storageLimitMb)}`, ...plan.features].map((feature) => (
                 <li key={feature} className="flex items-start gap-2">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 text-primary" />
                   <span>{feature}</span>
@@ -618,9 +622,8 @@ export function PricingTab() {
                 <CardTitle className="text-2xl font-semibold space-mono-regular">{currentPlanLabel}</CardTitle>
                 <CardDescription className="fira-mono-regular">Track how close you are to the monthly allowance.</CardDescription>
                 <div className="mt-2 grid gap-1 text-xs text-muted-foreground sm:text-sm">
-                  <p>Requests: {planLimits.requestLimit.toLocaleString()} / month</p>
-                  <p>Pipelines: {planLimits.pipelineLimit}</p>
-                  <p>Storage: {planLimits.storageLimitMb} MB / pipeline</p>
+                  <p>Monthly Capacity: {planLimits.requestLimit.toLocaleString()} Requests</p>
+                  <p>Storage Pool: {formatStorageValue(usageSummary?.plan?.storageLimitMb ?? planLimits.storageLimitMb)}</p>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -653,8 +656,10 @@ export function PricingTab() {
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-3">
               {usageMetrics.map((metric) => {
-                const limit = metric.limit || 1
-                const percentage = Math.min((metric.value / limit) * 100, 100)
+                const limit = metric.limit
+                const isUnlimited = limit === 0
+                const safeLimit = isUnlimited ? 1 : limit
+                const percentage = Math.min((metric.value / safeLimit) * 100, 100)
                 const Icon = metric.icon
                 return (
                   <div key={metric.label} className="rounded-xl border bg-card p-4">
@@ -668,8 +673,11 @@ export function PricingTab() {
                       </span>
                     </div>
                     <div className="mt-3 space-y-2">
-                      <Progress value={percentage} className="h-2" />
-                      <div className="text-xs text-muted-foreground fira-mono-regular">{percentage.toFixed(0)}% used</div>
+                      <Progress value={isUnlimited ? 0 : percentage} className="h-2" />
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground fira-mono-regular">
+                        <span>{isUnlimited ? "No limit" : `${percentage.toFixed(0)}% used`}</span>
+                        {metric.subtext && <span className="italic opacity-70">{metric.subtext}</span>}
+                      </div>
                     </div>
                   </div>
                 )
@@ -727,9 +735,8 @@ export function PricingTab() {
                       {
                         category: "Quotas",
                         items: [
-                          { label: "RAG Pipelines", free: "1", starter: "3", enterprise: "8" },
                           { label: "Monthly Requests", free: "100", starter: "5,000", enterprise: "15,000" },
-                          { label: "Storage per Pipeline", free: "50 MB", starter: "500 MB", enterprise: "1 GB" },
+                          { label: "Total Storage Pool", free: "50 MB", starter: "5 GB", enterprise: "20 GB" },
                         ]
                       },
                       {

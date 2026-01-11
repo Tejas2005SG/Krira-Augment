@@ -256,7 +256,7 @@ export function AppSidebar({
               <div className="flex items-center gap-3 rounded-xl bg-gradient-to-br from-muted/50 to-muted/30 p-3 ring-1 ring-border/50 transition-all hover:ring-border">
                 <Avatar className="h-10 w-10 ring-2 ring-primary/20 shadow-sm">
                   <AvatarImage
-                    src="/images/avatar.png"
+                    src="/avatar.png"
                     alt={`${displayName} avatar`}
                   />
                   <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground font-semibold">
@@ -310,7 +310,7 @@ export function AppSidebar({
                   <div className="flex cursor-default items-center justify-center rounded-xl bg-gradient-to-br from-muted/50 to-muted/30 p-2 ring-1 ring-border/50 mx-auto">
                     <Avatar className="h-9 w-9 ring-2 ring-primary/20 shadow-sm">
                       <AvatarImage
-                        src="/images/avatar.png"
+                        src="/avatar.png"
                         alt={`${displayName} avatar`}
                       />
                       <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-xs font-semibold">

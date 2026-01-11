@@ -4,22 +4,16 @@ import Link from 'next/link'
 
 const tableData = [
     {
-        feature: 'RAG Pipelines',
-        free: '1',
-        starter: '3',
-        enterprise: '8',
-    },
-    {
         feature: 'Monthly Requests',
         free: '100',
         starter: '5,000',
         enterprise: '15,000',
     },
     {
-        feature: 'Storage per Pipeline',
+        feature: 'Total Storage Pool',
         free: '50 MB',
-        starter: '500 MB',
-        enterprise: '1 GB',
+        starter: '5 GB',
+        enterprise: '20 GB',
     },
     {
         feature: 'Vector Databases',
