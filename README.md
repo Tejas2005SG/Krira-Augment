@@ -1,4 +1,4 @@
-# Krira Augment
+# Krira Augment - Production Grade RAG in Minutes
 
 A comprehensive platform for building, training, and deploying custom AI chatbots using Retrieval-Augmented Generation (RAG).
 
