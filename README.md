@@ -1,4 +1,4 @@
-# Krira Augment
+# Krira Augment - Production Grade RAG in Minutes
 
 A comprehensive platform for building, training, and deploying custom AI chatbots using Retrieval-Augmented Generation (RAG).
 
@@ -162,6 +162,23 @@ response = client.ask("What is your return policy?")
 print(response.answer)
 ```
 
-## License
+## ScreenShots
 
-ISC
+<img width="1919" height="1089" alt="Screenshot 2026-02-14 184034" src="https://github.com/user-attachments/assets/fa692ffe-4332-4805-8956-5143eb1146f6" />
+
+<img width="1919" height="1088" alt="Screenshot 2026-02-14 184728" src="https://github.com/user-attachments/assets/bb6d79cc-4fc5-4655-adfe-6c7109d83ae4" />
+
+<img width="1919" height="1090" alt="Screenshot 2026-02-14 184826" src="https://github.com/user-attachments/assets/97f87a1a-f894-4ef1-922c-e9132786e550" />
+
+<img width="1919" height="1091" alt="Screenshot 2026-02-14 184918" src="https://github.com/user-attachments/assets/de120e89-02f0-408b-8f30-b3bae38e6cff" />
+
+<img width="1919" height="1091" alt="Screenshot 2026-02-14 184955" src="https://github.com/user-attachments/assets/0c5d1629-9ed0-4657-ac2c-b3a04b25399d" />
+
+<img width="1919" height="1091" alt="Screenshot 2026-02-14 185011" src="https://github.com/user-attachments/assets/c392dcfc-f136-4fc9-ae70-4ad0359b6c12" />
+
+<img width="1919" height="1083" alt="Screenshot 2026-02-14 185204" src="https://github.com/user-attachments/assets/3566d92b-cb18-44ca-9d50-13004775d4b2" />
+
+<img width="1919" height="1089" alt="Screenshot 2026-02-14 185247" src="https://github.com/user-attachments/assets/35c94e2b-b335-48c7-9a30-30be2fd6ed2e" />
+
+<img width="1551" height="928" alt="Screenshot 2026-02-14 185301" src="https://github.com/user-attachments/assets/392ba7cc-f881-4e20-95c7-1e3fbaa41705" />
+
