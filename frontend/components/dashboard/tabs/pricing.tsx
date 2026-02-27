@@ -86,7 +86,7 @@ const FALLBACK_PLANS: PlanCard[] = [
     name: "Enterprise",
     description: "Massive 20GB storage pool and infrastructure.",
     badge: "Maximum Power",
-    monthlyPrice: 200,
+    monthlyPrice: 179,
     annualPrice: null,
     currency: "USD",
     isFree: false,

@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Check } from 'lucide-react'
+import { CheckCircle2, Star } from 'lucide-react'
 
 const plans = [
     {
@@ -13,6 +13,9 @@ const plans = [
         price: "$0",
         period: "/ month",
         features: [
+            "Requests: 100 / mo",
+            "Total Storage: 50 MB",
+            "Unlimited pipelines",
             "100 requests / month",
             "50 MB total storage pool",
             "Internal vector DB",
@@ -32,6 +35,9 @@ const plans = [
         price: "$49",
         period: "/ month",
         features: [
+            "Requests: 5,000 / mo",
+            "Total Storage: 5.0 GB",
+            "Unlimited pipelines",
             "5,000 requests / month",
             "5 GB total storage pool",
             "Bring your own vector store",
@@ -48,9 +54,12 @@ const plans = [
         name: "Enterprise",
         badge: "Maximum Power",
         description: "For teams that need massive infrastructure and storage.",
-        price: "$200",
+        price: "$179",
         period: "/ month",
         features: [
+            "Requests: 15,000 / mo",
+            "Total Storage: 20.0 GB",
+            "Unlimited pipelines",
             "15,000 requests / month",
             "20 GB total storage pool",
             "Bring your own vector store",
@@ -77,55 +86,54 @@ export default function Pricing() {
 
                 <div className="grid gap-6 md:grid-cols-3">
                     {plans.map((plan) => (
-                        <div key={plan.id} className={`relative flex flex-col ${plan.isPopular ? 'lg:scale-105 z-10' : ''}`}>
-                            {plan.isPopular && (
-                                <span className="absolute inset-x-0 -top-3 mx-auto z-20 flex h-6 w-fit items-center rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground ring-1 ring-inset ring-primary/20 shadow-sm">
-                                    {plan.badge}
-                                </span>
-                            )}
+                        <div key={plan.id} className={`relative flex flex-col ${plan.isPopular ? '' : ''}`}>
                             <Card
-                                className={`group flex flex-col relative h-full transition-all duration-300 hover:shadow-xl overflow-hidden ${plan.isPopular
-                                    ? 'border-primary shadow-lg bg-background'
-                                    : 'border-zinc-200 dark:border-zinc-800 hover:-translate-y-1 bg-background'
+                                className={`group relative flex h-full flex-col border transition-all duration-300 hover:shadow-xl overflow-hidden ${plan.isPopular
+                                    ? 'border-primary shadow-lg'
+                                    : 'hover:border-primary/40'
                                     }`}
                             >
                                 {/* Aurora glow effect on card */}
                                 <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                                    <div className="absolute -top-20 -left-20 h-40 w-40 rounded-full bg-gradient-to-r from-violet-500/20 to-indigo-500/20 blur-2xl" />
-                                    <div className="absolute -bottom-20 -right-20 h-40 w-40 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 blur-2xl" />
+                                    <div className="absolute -top-24 -left-24 h-48 w-48 rounded-full bg-gradient-to-r from-violet-500/20 to-indigo-500/20 blur-3xl" />
+                                    <div className="absolute -bottom-24 -right-24 h-48 w-48 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 blur-3xl" />
                                 </div>
 
-                                <CardHeader>
-                                    <div className="flex justify-between items-center mb-2">
-                                        <CardTitle className="font-medium text-xl space-mono-regular font-bold">{plan.name}</CardTitle>
-                                        {!plan.isPopular && (
-                                            <Badge variant="secondary" className="text-[10px] font-normal">{plan.badge}</Badge>
-                                        )}
+                                {plan.isPopular && (
+                                    <div className="absolute top-0 left-0 h-1.5 w-full bg-gradient-to-r from-primary via-primary/60 to-primary/30 z-10" />
+                                )}
+
+                                <CardHeader className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle className="text-lg font-semibold space-mono-regular">{plan.name}</CardTitle>
+                                        {plan.badge && <Badge className="fira-mono-regular">{plan.badge}</Badge>}
                                     </div>
-                                    <div className="my-4 space-mono-regular">
-                                        <span className="text-4xl font-bold">{plan.price}</span>
-                                        <span className="text-muted-foreground ml-1 text-sm">{plan.period}</span>
-                                    </div>
-                                    <CardDescription className="text-sm h-12">{plan.description}</CardDescription>
+                                    <CardDescription className="fira-mono-regular">{plan.description}</CardDescription>
                                 </CardHeader>
 
-                                <CardContent className="space-y-4">
-                                    <hr className="border-dashed" />
-                                    <ul className="space-y-3 text-sm">
-                                        {plan.features.map((feature, i) => (
-                                            <li key={i} className="flex items-start gap-2 text-muted-foreground">
-                                                <Check className="size-4 shrink-0 text-primary mt-0.5" />
-                                                <span className="leading-tight space-mono-regular">{feature}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
+                                <CardContent className="flex flex-1 flex-col space-y-5">
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-4xl font-bold space-mono-regular">{plan.price}</span>
+                                        <span className="text-sm text-muted-foreground fira-mono-regular">{plan.period}</span>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <p className="text-sm font-semibold text-foreground space-mono-regular">Includes</p>
+                                        <ul className="space-y-2 text-sm text-muted-foreground fira-mono-regular">
+                                            {plan.features.map((feature, i) => (
+                                                <li key={i} className="flex items-start gap-2">
+                                                    <CheckCircle2 className="mt-0.5 h-4 w-4 text-primary" />
+                                                    <span>{feature}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
                                 </CardContent>
 
-                                <CardFooter className="mt-auto pt-6">
+                                <CardFooter>
                                     <Button
                                         asChild
-                                        variant={plan.buttonVariant as "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"}
-                                        className="w-full space-mono-regular font-bold"
+                                        variant={plan.id === 'startup_monthly' ? "default" : "outline"}
+                                        className="w-full space-mono-regular"
                                     >
                                         <Link href={plan.id === 'enterprise_monthly' ? '#' : '/signup'}>
                                             {plan.buttonText}

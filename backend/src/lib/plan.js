@@ -70,7 +70,7 @@ const BASE_PLANS = {
     badge: "Maximum Power",
     description: "For teams that need massive infrastructure and storage.",
     currency: "usd",
-    monthlyPrice: 200,
+    monthlyPrice: 179,
     questionLimit: 15000,
     chatbotLimit: 0, // Unlimited
     storageLimitMb: 20480, // 20 GB
