@@ -28,6 +28,23 @@ if (!fs.existsSync(uploadsDir)) {
       console.warn("[Node] Falling back to system temp directory root");
     }
   }
+} else if (isProduction) {
+  // On startup in production, clean up any leftover temp files from previous runs
+  try {
+    const existingFiles = fs.readdirSync(uploadsDir);
+    let cleaned = 0;
+    for (const file of existingFiles) {
+      try {
+        fs.unlinkSync(path.join(uploadsDir, file));
+        cleaned++;
+      } catch (_err) { /* skip files that can't be deleted */ }
+    }
+    if (cleaned > 0) {
+      console.log(`[Node] Startup cleanup: removed ${cleaned} old temp file(s) from ${uploadsDir}`);
+    }
+  } catch (err) {
+    console.warn(`[Node] Startup cleanup failed:`, err.message);
+  }
 }
 
 const storage = multer.diskStorage({

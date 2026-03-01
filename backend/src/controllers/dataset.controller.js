@@ -1,4 +1,5 @@
 import axios from "axios";
+import fs from "fs";
 import path from "path";
 
 import { ENV } from "../lib/env.js";
@@ -65,9 +66,6 @@ const callPython = async (payload) => {
 
   console.log(`[Node] Calling Python backend at ${ENV.PYTHON_BACKEND_URL}/uploaddataset`);
 
-  // If file_path is provided, read the file content and send as base64
-  // Pass file_path directly to Python without reading content into memory
-  // This avoids "Cannot create a string longer than..." errors for large files
   const enhancedPayload = { ...payload };
   if (payload.file_path) {
     console.log(`[Node] Passing file path to Python backend: ${payload.file_path}`);
@@ -92,6 +90,22 @@ const callPython = async (payload) => {
 
 // Just use the absolute path directly
 const buildRelativePath = (absolutePath) => absolutePath.replace(/\\/g, "/");
+
+// Clean up uploaded temp files to prevent /tmp from filling up on Render
+const cleanupFiles = (files) => {
+  if (!files) return;
+  const allFiles = Object.values(files).flat();
+  for (const file of allFiles) {
+    try {
+      if (file?.path && fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+        console.log(`[Node] Cleaned up temp file: ${file.path}`);
+      }
+    } catch (err) {
+      console.warn(`[Node] Failed to cleanup file ${file?.path}:`, err.message);
+    }
+  }
+};
 
 const formatError = (label, type, error) => ({
   label,
@@ -245,6 +259,9 @@ export const uploadDataset = async (req, res) => {
         }
       }
 
+      // Clean up uploaded temp files after processing
+      cleanupFiles(req.files);
+
       const statusCode = errors.length > 0 && results.length === 0 ? 400 : 200;
       if (statusCode === 200 && results.length > 0) {
         await commitStorageUsage();
@@ -286,8 +303,12 @@ export const uploadDataset = async (req, res) => {
 
     const pythonResponse = await callPython(payload);
     await commitStorageUsage();
+    // Clean up uploaded temp files after processing
+    cleanupFiles(req.files);
     return res.status(200).json(pythonResponse);
   } catch (error) {
+    // Always clean up temp files, even on error
+    cleanupFiles(req.files);
     if (error.response) {
       return res.status(error.response.status).json(error.response.data);
     }

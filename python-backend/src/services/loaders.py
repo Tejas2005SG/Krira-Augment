@@ -64,9 +64,28 @@ class DatasetLoader:
         try:
             self.uploads_dir.mkdir(parents=True, exist_ok=True)
             logger.info(f"Initialized uploads directory at {self.uploads_dir}")
+            # On production startup, clean up any leftover temp files
+            if is_production:
+                self._cleanup_old_files()
         except Exception as e:
             logger.warning(f"Failed to create uploads dir at {self.uploads_dir}: {e}. Falling back to system temp.")
             self.uploads_dir = Path(tempfile.gettempdir())
+
+    def _cleanup_old_files(self) -> None:
+        """Remove all files in the uploads directory to free up disk space."""
+        try:
+            cleaned = 0
+            for f in self.uploads_dir.iterdir():
+                if f.is_file():
+                    try:
+                        f.unlink()
+                        cleaned += 1
+                    except Exception:
+                        pass
+            if cleaned > 0:
+                logger.info(f"Startup cleanup: removed {cleaned} old temp file(s) from {self.uploads_dir}")
+        except Exception as e:
+            logger.warning(f"Startup cleanup failed: {e}")
 
     async def load_and_chunk(
         self,
