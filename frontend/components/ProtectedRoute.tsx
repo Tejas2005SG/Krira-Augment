@@ -2,7 +2,8 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import DashboardLoading from '@/components/DashboardLoading';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -18,6 +19,44 @@ export default function ProtectedRoute({
   const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+
+  const [serversReady, setServersReady] = useState(false);
+
+  // Polling Server Health
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    // Check if the route is dashboard-related. If so, poll servers; otherwise, bypass.
+    if (!pathname.startsWith('/dashboard')) {
+      setServersReady(true);
+      return;
+    }
+
+    const checkServers = async () => {
+      try {
+        const res = await fetch('/api/health-check').catch(() => null);
+
+        if (res?.ok) {
+          setServersReady(true);
+          return true;
+        }
+      } catch {
+        return false;
+      }
+      return false;
+    };
+
+    checkServers().then(ready => {
+      if (!ready) {
+        interval = setInterval(async () => {
+          const isReady = await checkServers();
+          if (isReady) clearInterval(interval);
+        }, 3000); // Check every 3 seconds
+      }
+    });
+
+    return () => clearInterval(interval);
+  }, [pathname]);
 
   useEffect(() => {
     // Wait for loading to complete
@@ -52,6 +91,11 @@ export default function ProtectedRoute({
         </div>
       </div>
     );
+  }
+
+  // Show beautiful initialization animation if servers aren't ready and user is authenticated
+  if (isAuthenticated && !serversReady && pathname.startsWith('/dashboard')) {
+    return <DashboardLoading />;
   }
 
   // Don't render if not authenticated or role not allowed

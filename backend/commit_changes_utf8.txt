@@ -1,0 +1,42 @@
+﻿commit 5c6552e4d5a92a72f5563de7d89375d708bc4b94
+Author: Tejas2005SG <tbhangale9@gmail.com>
+Date:   Sun Mar 1 15:17:16 2026 +0530
+
+    Fix cross-server file exchange and add tmp cleanup
+
+diff --git a/backend/src/controllers/dataset.controller.js b/backend/src/controllers/dataset.controller.js
+index 74968eb..93ec0a1 100644
+--- a/backend/src/controllers/dataset.controller.js
++++ b/backend/src/controllers/dataset.controller.js
+@@ -68,14 +68,29 @@ const callPython = async (payload) => {
+ 
+   const enhancedPayload = { ...payload };
+   if (payload.file_path) {
+-    console.log(`[Node] Passing file path to Python backend: ${payload.file_path}`);
++    try {
++      const filePath = payload.file_path;
++      console.log(`[Node] Reading file for Python backend: ${filePath}`);
++      const fileBuffer = fs.readFileSync(filePath);
++      enhancedPayload.file_content = fileBuffer.toString("base64");
++      // Clear file_path so Python uses file_content instead
++      enhancedPayload.file_path = null;
++      console.log(`[Node] Encoded file as base64 (${fileBuffer.length} bytes)`);
++    } catch (readError) {
++      console.error(`[Node] Failed to read file at ${payload.file_path}:`, readError.message);
++      throw new Error(`Failed to read uploaded file: ${readError.message}`);
++    }
+   }
+ 
+   try {
+     const response = await axios.post(
+       `${ENV.PYTHON_BACKEND_URL.replace(/\/$/, "")}/uploaddataset`,
+       enhancedPayload,
+-      { timeout: 300000 } // 5 minutes timeout
++      {
++        timeout: 300000, // 5 minutes timeout
++        maxBodyLength: Infinity,
++        maxContentLength: Infinity,
++      }
+     );
+     console.log("[Node] Python backend responded successfully");
+     return response.data;

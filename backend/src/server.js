@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import mongoose from 'mongoose';
 import { ENV } from './lib/env.js'
 import { connectDb } from './lib/db.js';
 
@@ -48,6 +49,34 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
 
+// Health Check Endpoint (Production Ready)
+app.get("/health", async (req, res) => {
+    const isDbConnected = mongoose.connection.readyState === 1;
+
+    const healthcheck = {
+        uptime: process.uptime(),
+        message: isDbConnected ? 'OK' : 'Database connection unavailable',
+        timestamp: Date.now(),
+        services: {
+            database: isDbConnected ? 'connected' : 'disconnected'
+        },
+        memoryUsage: {
+            rss: `${Math.round(process.memoryUsage().rss / 1024 / 1024)} MB`,
+            heapTotal: `${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)} MB`,
+            heapUsed: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB`,
+        }
+    };
+
+    try {
+        if (!isDbConnected) {
+            return res.status(503).json(healthcheck);
+        }
+        res.status(200).json(healthcheck);
+    } catch (error) {
+        healthcheck.message = error.message || 'Error executing health check';
+        res.status(503).json(healthcheck);
+    }
+});
 
 app.use("/api/auth", authRoutes);
 app.use("/api/datasets", datasetRoutes);
